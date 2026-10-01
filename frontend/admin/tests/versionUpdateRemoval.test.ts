@@ -11,7 +11,7 @@ const removedFrontendFiles = [
   'src/utils/releaseNotes.test.ts',
 ]
 
-test('admin has no version update controls or client calls', () => {
+test('retired official updater controls and client calls remain absent', () => {
   const layout = read('src/layouts/AdminLayout.vue')
   for (const path of removedFrontendFiles) {
     assert.equal(existsSync(new URL(path, root)), false, path)
@@ -26,7 +26,7 @@ test('admin has no version update controls or client calls', () => {
   assert.equal((layout.match(/\{\{ appVersion \}\}/g) || []).length, 2)
 })
 
-test('backend exposes no version check or self-update endpoints', () => {
+test('retired official updater endpoints remain absent', () => {
   for (const path of [
     '../../internal/platform/http/system/update_handler.go',
     '../../internal/platform/http/system/admin_handler.go',
@@ -40,16 +40,16 @@ test('backend exposes no version check or self-update endpoints', () => {
   assert.doesNotMatch(read('../../internal/authz/bootstrap.go'), /system\/version\/check|system\/update|system\/restart/)
 })
 
-test('admin has no dormant update translations or dependencies', () => {
+test('retired official updater translations and dependencies remain absent', () => {
   assert.doesNotMatch(read('src/i18n/index.ts'), /updateCheck:|systemUpdate:|检测更新|一键升级|Check for updates/)
   assert.doesNotMatch(read('package.json'), /"dompurify"|"marked"/)
 })
 
-test('server startup no longer contains self-update or rollback machinery', () => {
+test('server startup remains free of in-process official updater machinery', () => {
   assert.doesNotMatch(read('../../cmd/server/main.go'), /internal\/selfupdate|selfupdate\.|runRollbackCommand|printUpdateStateRecoveryHint/)
   assert.doesNotMatch(read('../../internal/version/version.go'), /BuildType|IsReleaseBuild|self-update|一键升级/)
   assert.doesNotMatch(read('../../internal/i18n/messages.go'), /error\.update_|error\.restart_not_supported/)
   assert.doesNotMatch(read('../../.goreleaser.yaml'), /version\.BuildType|一键升级/)
   assert.doesNotMatch(read('../../Dockerfile'), /version\.BuildType/)
-  assert.doesNotMatch(read('../../.github/workflows/ci.yml'), /release notes.*sanitizer/i)
+  assert.doesNotMatch(read('../../source-workflows/ci.yml'), /release notes.*sanitizer/i)
 })

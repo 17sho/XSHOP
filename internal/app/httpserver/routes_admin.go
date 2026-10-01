@@ -15,6 +15,7 @@ import (
 	mappinghttp "github.com/dujiao-next/internal/modules/catalog/mapping/transport/http"
 	producthttp "github.com/dujiao-next/internal/modules/catalog/product/transport/http"
 	channelclienthttp "github.com/dujiao-next/internal/modules/channelclient/transport/http"
+	"github.com/dujiao-next/internal/xshophttp"
 
 	contenttransport "github.com/dujiao-next/internal/modules/content/transport/http"
 	coupontransport "github.com/dujiao-next/internal/modules/coupon/transport/http"
@@ -91,6 +92,7 @@ func registerAdminRoutes(
 
 	// 需要鉴权的接口
 	authorized := admin.Use(middleware.JWTAuthMiddleware(cfg.JWT.SecretKey, c.AdminStore), middleware.AdminRBACMiddleware(c.AuthzService))
+	xshophttp.Register(authorized, xshophttp.Client())
 
 	// 仪表盘
 	dashboardtransport.RegisterAdminRoutes(authorized, adminDashboardHandler)

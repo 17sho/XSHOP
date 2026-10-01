@@ -130,6 +130,7 @@ watch(() => route.path, () => {
 
 const navGroups = computed<NavGroup[]>(() => {
   const groups: NavGroup[] = [
+    ...(authStore.isSuper ? [{ id: 'xshop-upgrade', label: 'XSHOP 更新', icon: Download, items: [{ label: '在线升级', to: '/xshop-upgrade', icon: Download, permission: 'GET:/admin/xshop-upgrade/status' }] }] : []),
     {
       id: 'products',
       label: t('admin.navGroups.productManagement'),

@@ -15,6 +15,12 @@ const routes = [
     meta: { requiresAuth: true },
     children: [
       {
+        path: 'xshop-upgrade',
+        name: 'xshop-upgrade',
+        component: () => import('@/views/admin/XshopUpgrade.vue'),
+        meta: { permission: 'GET:/admin/xshop-upgrade/status' },
+      },
+      {
         path: '',
         name: 'dashboard-home',
         component: () => import('@/views/Dashboard.vue'),
