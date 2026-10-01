@@ -1,0 +1,355 @@
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { useUserAuthStore } from '../stores/userAuth'
+import { useI18n } from 'vue-i18n'
+import { debounceAsync } from '../utils/debounce'
+import { useAppStore } from '../stores/app'
+import { userAuthAPI, type CaptchaPayload } from '../api'
+import ImageCaptcha from '../components/captcha/ImageCaptcha.vue'
+import TurnstileCaptcha from '../components/captcha/TurnstileCaptcha.vue'
+import { useFormValidation, getPasswordStrength } from './useFormValidation'
+import { getImageUrl } from '../utils/image'
+
+/**
+ * 用户注册页共享逻辑（classic + vault 双模板共用）。
+ * 完整保留原 views/auth/Register.vue 的行为，仅抽离为 composable。
+ */
+export function useRegister() {
+  const router = useRouter()
+  const userAuthStore = useUserAuthStore()
+  const appStore = useAppStore()
+  const { t } = useI18n()
+
+  let disposed = false
+  let authRequest = 0
+  let releaseAuthLoading: (() => void) | undefined
+  // The server may already have acted. Only discard obsolete client commits;
+  // never try to roll back a completed authentication/email operation.
+  const beginAuthOperation = () => {
+    const request = ++authRequest
+    const session = userAuthStore.sessionGeneration
+    const identity = registrationEmail.value
+    const current = () => !disposed && request === authRequest &&
+      session === userAuthStore.sessionGeneration && identity === registrationEmail.value
+    userAuthStore.loading = true
+    let ownsLoading = true
+    const release = () => {
+      if (ownsLoading && request === authRequest) userAuthStore.loading = false
+      ownsLoading = false
+    }
+    const finish = () => { if (current()) release() }
+    releaseAuthLoading = release
+    return { current, finish }
+  }
+
+  const brandSiteName = computed(() => {
+    const siteName = String(appStore.config?.brand?.site_name || '').trim()
+    return siteName !== '' ? siteName : 'Dujiao-Next'
+  })
+  const brandLogo = computed(() => {
+    const logo = String(appStore.config?.brand?.site_logo || '').trim()
+    return logo ? getImageUrl(logo) : ''
+  })
+
+  const email = ref('')
+  const emailLocalPart = ref('')
+  const selectedEmailDomain = ref('')
+  const password = ref('')
+  const showPassword = ref(false)
+  const code = ref('')
+  const agreed = ref(false)
+
+  const passwordStrength = computed(() => getPasswordStrength(password.value))
+  const error = ref('')
+  const sending = ref(false)
+  const countdown = ref(0)
+  const captchaPayload = ref<CaptchaPayload>({})
+  const turnstileToken = ref('')
+  const imageCaptchaRef = ref<InstanceType<typeof ImageCaptcha> | null>(null)
+  const turnstileRef = ref<InstanceType<typeof TurnstileCaptcha> | null>(null)
+  const registerCaptchaPayload = ref<CaptchaPayload>({})
+  const registerTurnstileToken = ref('')
+  const registerImageCaptchaRef = ref<InstanceType<typeof ImageCaptcha> | null>(null)
+  const registerTurnstileRef = ref<InstanceType<typeof TurnstileCaptcha> | null>(null)
+  let timer: number | undefined
+
+  const captchaConfig = computed(() => appStore.config?.captcha || null)
+  const captchaProvider = computed(() => String(captchaConfig.value?.provider || 'none'))
+  const registerCaptchaEnabled = computed(() => !!captchaConfig.value?.scenes?.register && captchaProvider.value !== 'none')
+  const sendCodeCaptchaEnabled = computed(() => !!captchaConfig.value?.scenes?.register_send_code && captchaProvider.value !== 'none')
+  const turnstileSiteKey = computed(() => String(captchaConfig.value?.turnstile?.site_key || ''))
+  const registrationEnabled = computed(() => appStore.config?.registration_enabled !== false)
+  const emailVerificationEnabled = computed(() => appStore.config?.email_verification_enabled !== false)
+  const emailDomainAllowlistEnabled = computed(() => appStore.config?.email_domain_allowlist_enabled === true)
+  const allowedEmailDomains = computed(() => {
+    const raw = appStore.config?.allowed_email_domains
+    if (!Array.isArray(raw)) return []
+
+    const seen = new Set<string>()
+    const domains: string[] = []
+    raw
+      .map((item) => String(item || '').trim().replace(/^@+/, '').toLowerCase())
+      .filter(Boolean)
+      .forEach((domain) => {
+        if (seen.has(domain)) return
+        seen.add(domain)
+        domains.push(domain)
+      })
+    return domains
+  })
+  const allowedEmailDomainsText = computed(() => allowedEmailDomains.value.join(', '))
+  const emailDomainSelectionRequired = computed(() => emailDomainAllowlistEnabled.value && allowedEmailDomains.value.length > 0)
+
+  watch(allowedEmailDomains, (domains) => {
+    if (domains.length === 0) {
+      selectedEmailDomain.value = ''
+      return
+    }
+    if (!domains.includes(selectedEmailDomain.value)) {
+      selectedEmailDomain.value = domains[0] || ''
+    }
+  }, { immediate: true })
+
+  const registrationEmail = computed(() => {
+    if (!emailDomainSelectionRequired.value) return email.value.trim()
+    const localPart = emailLocalPart.value.trim()
+    const domain = selectedEmailDomain.value.trim()
+    if (!localPart || !domain) return ''
+    return `${localPart}@${domain}`
+  })
+
+  const getEmailDomain = (value: string): string => {
+    const normalized = value.trim().toLowerCase()
+    const at = normalized.lastIndexOf('@')
+    if (at <= 0 || at === normalized.length - 1) return ''
+    return normalized.slice(at + 1)
+  }
+
+  const emailDomainRule = (value: string): string | null => {
+    if (!emailDomainAllowlistEnabled.value) return null
+    const domain = getEmailDomain(value)
+    if (!domain) return null
+    if (allowedEmailDomains.value.length === 0) {
+      return t('auth.register.errors.emailDomainUnavailable')
+    }
+    if (allowedEmailDomains.value.includes(domain)) return null
+    return t('auth.register.errors.emailDomainNotAllowed', { domains: allowedEmailDomainsText.value })
+  }
+
+  const touchRegistrationEmail = () => {
+    formValidation.touchField('email', registrationEmail.value)
+  }
+
+  const formValidation = useFormValidation(['email', 'password'])
+  formValidation.addRule('email', formValidation.requiredRule('formValidation.emailRequired'))
+  formValidation.addRule('email', formValidation.emailRule())
+  formValidation.addRule('email', emailDomainRule)
+  formValidation.addRule('password', formValidation.requiredRule('formValidation.passwordRequired'))
+  formValidation.addRule('password', formValidation.minLengthRule(6))
+
+  const startCountdown = () => {
+    countdown.value = 60
+    timer = window.setInterval(() => {
+      countdown.value -= 1
+      if (countdown.value <= 0 && timer) {
+        clearInterval(timer)
+        timer = undefined
+      }
+    }, 1000)
+  }
+
+  const getCaptchaPayload = (enabled: boolean, payload: CaptchaPayload, token: string): CaptchaPayload | undefined => {
+    if (!enabled) return undefined
+    if (captchaProvider.value === 'image') {
+      return {
+        captcha_id: payload.captcha_id || '',
+        captcha_code: payload.captcha_code || '',
+      }
+    }
+    if (captchaProvider.value === 'turnstile') {
+      return {
+        turnstile_token: token,
+      }
+    }
+    return undefined
+  }
+
+  const handleCaptchaConfigStale = async () => {
+    const request = authRequest
+    await appStore.loadConfig(true)
+    if (disposed || request !== authRequest) return
+    captchaPayload.value = {}
+    turnstileToken.value = ''
+    registerCaptchaPayload.value = {}
+    registerTurnstileToken.value = ''
+  }
+
+  const performSendCode = async () => {
+    if (disposed) return
+    error.value = ''
+    const currentEmail = registrationEmail.value
+    if (!currentEmail) {
+      error.value = t('auth.register.errors.emailRequired')
+      return
+    }
+    touchRegistrationEmail()
+    if (formValidation.hasError('email')) return
+    if (countdown.value > 0) return
+
+    if (sendCodeCaptchaEnabled.value && captchaProvider.value === 'image') {
+      if (!captchaPayload.value.captcha_id || !captchaPayload.value.captcha_code) {
+        error.value = t('auth.common.captchaRequired')
+        return
+      }
+    }
+    if (sendCodeCaptchaEnabled.value && captchaProvider.value === 'turnstile') {
+      if (!turnstileToken.value) {
+        error.value = t('auth.common.captchaRequired')
+        return
+      }
+    }
+
+    sending.value = true
+    const operation = beginAuthOperation()
+    try {
+      await userAuthAPI.sendVerifyCode({
+        email: currentEmail,
+        purpose: 'register',
+        captcha_payload: getCaptchaPayload(sendCodeCaptchaEnabled.value, captchaPayload.value, turnstileToken.value),
+      })
+      if (!operation.current()) return
+      startCountdown()
+    } catch (err: any) {
+      if (!operation.current()) return
+      error.value = err.message || t('auth.register.errors.sendCodeFailed')
+      if (captchaProvider.value === 'image') {
+        imageCaptchaRef.value?.refresh()
+      }
+      if (captchaProvider.value === 'turnstile') {
+        turnstileRef.value?.reset()
+        turnstileToken.value = ''
+      }
+    } finally {
+      if (operation.current()) sending.value = false
+      operation.finish()
+    }
+  }
+
+  const performRegister = async () => {
+    if (disposed) return
+    error.value = ''
+    const currentEmail = registrationEmail.value
+    if (!formValidation.validateAll({ email: currentEmail, password: password.value })) return
+    if (emailVerificationEnabled.value && !code.value) return
+    if (!agreed.value) {
+      error.value = t('auth.register.errors.agreementRequired')
+      return
+    }
+    if (registerCaptchaEnabled.value && captchaProvider.value === 'image') {
+      if (!registerCaptchaPayload.value.captcha_id || !registerCaptchaPayload.value.captcha_code) {
+        error.value = t('auth.common.captchaRequired')
+        return
+      }
+    }
+    if (registerCaptchaEnabled.value && captchaProvider.value === 'turnstile') {
+      if (!registerTurnstileToken.value) {
+        error.value = t('auth.common.captchaRequired')
+        return
+      }
+    }
+    const operation = beginAuthOperation()
+    try {
+      const response = await userAuthAPI.register({
+        email: currentEmail,
+        password: password.value,
+        code: emailVerificationEnabled.value ? code.value : '',
+        agreement_accepted: agreed.value,
+        captcha_payload: getCaptchaPayload(registerCaptchaEnabled.value, registerCaptchaPayload.value, registerTurnstileToken.value),
+      })
+      if (!operation.current()) return
+      operation.finish()
+      userAuthStore.acceptOAuthLogin(response.data.data)
+      router.push('/me/orders')
+    } catch (err: any) {
+      if (!operation.current()) return
+      error.value = err.message || t('auth.register.errors.registerFailed')
+      if (captchaProvider.value === 'image') {
+        registerImageCaptchaRef.value?.refresh()
+      }
+      if (captchaProvider.value === 'turnstile') {
+        registerTurnstileRef.value?.reset()
+        registerTurnstileToken.value = ''
+      }
+    } finally {
+      operation.finish()
+    }
+  }
+
+  const handleSendCode = debounceAsync(performSendCode, 200)
+  const handleRegister = debounceAsync(performRegister, 200)
+
+  watch([() => userAuthStore.sessionGeneration, () => registrationEmail.value], () => {
+    releaseAuthLoading?.()
+    authRequest++
+    handleSendCode.cancel()
+    handleRegister.cancel()
+    if (timer !== undefined) clearInterval(timer)
+    timer = undefined
+    countdown.value = 0
+    sending.value = false
+  }, { flush: 'sync' })
+
+  onUnmounted(() => {
+    releaseAuthLoading?.()
+    disposed = true
+    authRequest++
+    if (timer !== undefined) clearInterval(timer)
+    timer = undefined
+    handleSendCode.cancel()
+    handleRegister.cancel()
+  })
+
+  onMounted(async () => {
+    await appStore.loadConfig(true)
+  })
+
+  return {
+    userAuthStore,
+    brandSiteName,
+    brandLogo,
+    email,
+    emailLocalPart,
+    selectedEmailDomain,
+    password,
+    showPassword,
+    code,
+    agreed,
+    passwordStrength,
+    error,
+    sending,
+    countdown,
+    captchaPayload,
+    turnstileToken,
+    imageCaptchaRef,
+    turnstileRef,
+    registerCaptchaPayload,
+    registerTurnstileToken,
+    registerImageCaptchaRef,
+    registerTurnstileRef,
+    captchaProvider,
+    registerCaptchaEnabled,
+    sendCodeCaptchaEnabled,
+    turnstileSiteKey,
+    registrationEnabled,
+    emailVerificationEnabled,
+    emailDomainAllowlistEnabled,
+    allowedEmailDomains,
+    allowedEmailDomainsText,
+    emailDomainSelectionRequired,
+    touchRegistrationEmail,
+    formValidation,
+    handleCaptchaConfigStale,
+    handleSendCode,
+    handleRegister,
+  }
+}

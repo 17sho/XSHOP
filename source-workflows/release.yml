@@ -1,0 +1,111 @@
+name: goreleaser
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Tag 发布独立验证关键测试与构建；不声称依赖普通分支 CI。
+      - name: Verify release source
+        run: python3 scripts/check_release_source.py
+
+      # 前端源码已在本仓库 frontend/ 下，不再需要跨仓库 checkout。
+      # 实际的前端构建与嵌入由 .goreleaser.yaml 的 before hooks 完成。
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.21.0'
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install frontend dependencies
+        run: |
+          (cd frontend/admin && pnpm install --frozen-lockfile)
+          (cd frontend/user && pnpm install --frozen-lockfile)
+
+      - name: Verify installed frontend dependency security
+        run: |
+          node scripts/check_frontend_dependency_safety.cjs user
+          node scripts/check_frontend_dependency_safety.cjs admin
+
+      # Typecheck and build first: existing frontend tests read dist assets.
+      - name: Build frontends
+        run: |
+          (cd frontend/admin && pnpm run build:fullstack)
+          (cd frontend/user && pnpm run build)
+
+      - name: Verify release test gates
+        run: |
+          python3 -m unittest scripts.tests.check_frontend_assets_test scripts.tests.check_release_source_test
+          (cd frontend/admin && pnpm test)
+          (cd frontend/user && pnpm test)
+          go test ./...
+
+      - name: Verify release source after tests
+        run: python3 scripts/check_release_source.py
+
+      - name: Verify Go formatting, vet and server build
+        shell: bash
+        run: |
+          unformatted="$(gofmt -l $(git ls-files '*.go'))"
+          if [[ -n "$unformatted" ]]; then
+            printf '%s\n' "$unformatted"
+            exit 1
+          fi
+          go vet ./...
+          go build -o /tmp/dujiao-release-server-check ./cmd/server
+
+      - name: Verify installer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-yaml shellcheck
+          bash -n scripts/dujiao-next-manager.sh
+          bash -n scripts/tests/dujiao-next-manager_test.sh
+          shellcheck -x -S warning scripts/dujiao-next-manager.sh scripts/tests/dujiao-next-manager_test.sh
+          sudo bash scripts/tests/dujiao-next-manager_test.sh
+          python3 - <<'PY'
+          import yaml
+          with open('.goreleaser.yaml', encoding='utf-8') as handle:
+              config = yaml.safe_load(handle)
+          assert './scripts/dujiao-next-manager.sh' in config['archives'][0]['files']
+          PY
+
+      - name: Verify and embed built frontends
+        run: |
+          python3 scripts/check_frontend_assets.py frontend/admin/dist frontend/user/dist
+          mkdir -p internal/web/dist
+          cp -r frontend/admin/dist internal/web/dist/admin
+          cp -r frontend/user/dist internal/web/dist/user
+          go build -tags release,fullstack -o /tmp/dujiao-release-fullstack-check ./cmd/server
+
+      - name: Verify release source after gates
+        run: python3 scripts/check_release_source.py
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,232 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createApp, h, nextTick, type App } from 'vue'
+import { createI18n } from 'vue-i18n'
+import { createMemoryHistory, createRouter, RouterView } from 'vue-router'
+import Settings from './Settings.vue'
+import { registrationEmailTemplateMessages } from '@/i18n/registrationEmailTemplate'
+const api = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn(), orderGet: vi.fn(), orderPut: vi.fn(), generic: vi.fn() }))
+vi.mock('@/api/admin', () => ({ adminAPI: new Proxy({ getRegistrationEmailTemplateSettings: api.get, updateRegistrationEmailTemplateSettings: api.put, getOrderEmailTemplateSettings: api.orderGet, updateOrderEmailTemplateSettings: api.orderPut }, { get: (target, key) => target[key as keyof typeof target] || api.generic }) }))
+vi.mock('@/utils/notify', () => ({ notifyError: vi.fn(), notifySuccess: vi.fn() }))
+vi.mock('@/components/RichEditor.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('@/components/admin/MediaPicker.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('./components/SettingsSMTPTab.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('./components/SettingsCaptchaTab.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('./components/SettingsNavigationTab.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('./components/SettingsSecurityCenterTab.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('./components/SettingsPersonalCenterVisibilityTab.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('./components/SettingsHomeAnnouncementTab.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('./components/SettingsHomepageAdTab.vue', () => ({ default: { template: '<div />' } }))
+vi.mock('./components/SettingsUpstreamSyncTab.vue', () => ({ default: { template: '<div />' } }))
+const locales = ['zh-CN', 'zh-TW', 'en-US']
+const localized = (scene: string) => Object.fromEntries(locales.map(lang => [lang, { subject: `${scene} ${lang}`, body: '{{site_name}} {{code}} {{expire_minutes}}', custom_html: '', custom_html_enabled: false }]))
+const fixture = () => ({ templates: localized('registration'), scenes: Object.fromEntries(['reset', 'telegram_bind', 'change_email_old', 'change_email_new'].map(scene => [scene, localized(scene)])) })
+const orderFixture = () => ({ templates: Object.fromEntries(['default', 'paid', 'delivered', 'delivered_with_content', 'refunded', 'partially_refunded'].map(scene => [scene, Object.fromEntries(locales.map(lang => [lang, { subject: `${scene} ${lang}`, body: '{{order_no}} {{status}} {{site_name}}', custom_html: '', custom_html_enabled: false }]))])), guest_tip: Object.fromEntries(locales.map(lang => [lang, 'Guest'])), modules: { header: true, order_details: true, items: true, delivery: true, instructions: true, message: true, notice: true, footer: true } })
+let app: App; let container: HTMLDivElement
+const flush = async () => { await new Promise(resolve => setTimeout(resolve, 0)); await nextTick() }
+async function mount() {
+  container = document.createElement('div'); document.body.append(container)
+  const router = createRouter({ history: createMemoryHistory(), routes: [{ path: '/', component: Settings }, { path: '/other', component: { template: '<p>Other</p>' } }] })
+  await router.push('/'); await router.isReady()
+  app = createApp({ render: () => h(RouterView) })
+  app.use(router).use(createI18n({ legacy: false, locale: 'en-US', messages: { 'en-US': { admin: { settings: { registrationEmailTemplate: registrationEmailTemplateMessages['en-US'] } } } }, missingWarn: false, fallbackWarn: false }))
+  app.mount(container); await flush(); return router
+}
+const button = (text: string) => Array.from(container.querySelectorAll<HTMLButtonElement>('button')).find(node => node.textContent?.trim() === text)!
+async function click(text: string) { const node = button(text); expect(node).toBeTruthy(); node.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 })); node.click(); await flush() }
+async function type(selector: string, value: string) { const node = container.querySelector<HTMLInputElement>(selector)!; expect(node).toBeTruthy(); node.value = value; node.dispatchEvent(new Event('input', { bubbles: true })); await nextTick() }
+const save = () => button('admin.settings.actions.save') || button('admin.settings.actions.saving')
+beforeEach(() => {
+  api.get.mockReset().mockResolvedValue({ data: { data: fixture() } })
+  api.put.mockReset().mockImplementation(async value => ({ data: { data: structuredClone(value) } }))
+  api.orderGet.mockReset().mockResolvedValue({ data: { data: orderFixture() } })
+  api.orderPut.mockReset().mockImplementation(async value => ({ data: { data: structuredClone(value) } }))
+  api.generic.mockReset().mockResolvedValue({ data: { data: { brand: { site_name: 'Demo', site_url: 'https://example.test' }, verify_code: { expire_minutes: 17 } } } })
+  vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+  vi.stubGlobal('requestAnimationFrame', (fn: FrameRequestCallback) => setTimeout(fn, 0))
+  vi.stubGlobal('cancelAnimationFrame', clearTimeout)
+})
+afterEach(() => { app?.unmount(); container?.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
+describe('actual Settings unified mail entry', () => {
+  it('hosts registration, four purpose-specific verification scenes and existing orders under one parent save', async () => {
+    await mount()
+    const tabs = Array.from(container.querySelectorAll('[role="tab"]')).map(node => node.textContent)
+    expect(tabs).toContain('admin.settings.tabs.emailTemplates')
+    expect(tabs).not.toContain('admin.settings.tabs.registrationEmailTemplate')
+    expect(tabs).not.toContain('admin.settings.tabs.orderEmailTemplate')
+    await click('admin.settings.tabs.emailTemplates')
+    await type('#registration-email-subject', 'Kept registration draft')
+    await click('admin.settings.emailTemplates.scenes.reset')
+    expect(container.querySelector<HTMLInputElement>('#registration-email-subject')!.value).toBe('reset zh-CN')
+    await type('#registration-email-subject', 'Reset draft')
+    await click('admin.settings.tabs.basic'); await click('admin.settings.tabs.emailTemplates')
+    expect(container.querySelector<HTMLInputElement>('#registration-email-subject')!.value).toBe('Reset draft')
+    save().click(); await flush()
+    expect(api.put).toHaveBeenCalledTimes(1)
+    expect(api.put.mock.calls[0]![0].templates['zh-CN'].subject).toBe('Kept registration draft')
+    expect(api.put.mock.calls[0]![0].scenes.reset['zh-CN'].subject).toBe('Reset draft')
+    for (const scene of ['telegram_bind', 'change_email_old', 'change_email_new']) {
+      await click(`admin.settings.emailTemplates.scenes.${scene}`)
+      expect(container.querySelector<HTMLInputElement>('#registration-email-subject')!.value).toBe(`${scene} zh-CN`)
+    }
+    expect(api.orderPut).not.toHaveBeenCalled()
+    expect(container.querySelector('[data-testid="email-template-scene-order"]')).not.toBeNull()
+  })
+  it('keeps actual parent Save disabled during verification GET, failure and retry, without editable replacement fields', async () => {
+    let fail!: (error: Error) => void
+    api.get.mockReturnValueOnce(new Promise((_, reject) => { fail = reject }))
+    await mount(); await click('admin.settings.tabs.emailTemplates')
+    expect(save().disabled).toBe(true)
+    expect(container.querySelector('#registration-email-subject')).toBeNull()
+    save().click(); expect(api.put).not.toHaveBeenCalled()
+    fail(new Error('offline')); await flush()
+    expect(save().disabled).toBe(true)
+    expect(container.querySelector('#registration-email-subject')).toBeNull()
+    await click('Retry loading'); expect(save().disabled).toBe(false)
+    expect(container.querySelector<HTMLInputElement>('#registration-email-subject')!.value).toBe('registration zh-CN')
+  })
+  it('fails closed on missing new scenes and keeps parent Save unavailable until authoritative retry', async () => {
+    const legacy = fixture(); delete (legacy as { scenes?: unknown }).scenes
+    api.get.mockResolvedValueOnce({ data: { data: legacy } })
+    await mount(); await click('admin.settings.tabs.emailTemplates')
+    expect(save().disabled).toBe(true)
+    expect(container.querySelector('#registration-email-subject')).toBeNull()
+    save().click(); await flush(); expect(api.put).not.toHaveBeenCalled()
+    await click('Retry loading')
+    expect(save().disabled).toBe(false)
+    expect(api.get).toHaveBeenCalledTimes(2)
+    await click('admin.settings.emailTemplates.scenes.change_email_new')
+    expect(container.querySelector<HTMLInputElement>('#registration-email-subject')!.value).toBe('change_email_new zh-CN')
+  })
+  it('keeps verification snapshots and per-scene restore through the actual parent Save and real router', async () => {
+    const router = await mount(); await click('admin.settings.tabs.emailTemplates')
+    await click('admin.settings.emailTemplates.scenes.reset')
+    await type('#registration-email-subject', '  Submitted reset  ')
+    let finish!: (value: unknown) => void
+    api.put.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+    save().click(); await nextTick()
+    expect(save().disabled).toBe(true)
+    expect(save().textContent).toContain('admin.settings.actions.saving')
+    save().click(); expect(api.put).toHaveBeenCalledTimes(1)
+    await type('#registration-email-subject', 'Later reset')
+    await click('admin.settings.emailTemplates.scenes.telegram_bind')
+    await type('#registration-email-subject', 'TG draft')
+    const canonical = fixture(); canonical.scenes.reset!['zh-CN']!.subject = 'Submitted reset'
+    finish({ data: { data: canonical } }); await flush()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    await click('admin.settings.tabs.basic')
+    await router.push('/other'); expect(router.currentRoute.value.path).toBe('/')
+    expect(confirm).toHaveBeenCalled()
+    await click('admin.settings.tabs.emailTemplates'); await click('admin.settings.emailTemplates.scenes.reset')
+    expect(container.querySelector<HTMLInputElement>('#registration-email-subject')!.value).toBe('Later reset')
+    container.querySelector<HTMLButtonElement>('[data-testid="registration-email-revert"]')!.click(); await nextTick()
+    expect(container.querySelector<HTMLInputElement>('#registration-email-subject')!.value).toBe('Submitted reset')
+    await click('admin.settings.emailTemplates.scenes.telegram_bind')
+    expect(container.querySelector<HTMLInputElement>('#registration-email-subject')!.value).toBe('TG draft')
+    container.querySelector<HTMLButtonElement>('[data-testid="registration-email-revert"]')!.click(); await nextTick()
+    expect(container.querySelector('[data-testid="email-templates-dirty"]')).toBeNull()
+    await router.push('/other'); expect(router.currentRoute.value.path).toBe('/other')
+  })
+  it('validates every scene and locale using the same hardened HTML policy before parent PUT', async () => {
+    await mount(); await click('admin.settings.tabs.emailTemplates')
+    await click('admin.settings.emailTemplates.scenes.change_email_old'); await click('admin.common.lang.enUS')
+    await type('#registration-email-html', '<html><body><p>{{code}} {{expire_minutes}}</p><a href="jav&#x61;script:alert(1)">x</a></body></html>')
+    await click('admin.settings.emailTemplates.scenes.registration'); await click('admin.common.lang.zhCN')
+    save().click(); await flush(); expect(api.put).not.toHaveBeenCalled()
+    expect(container.querySelector('[role="alert"]')!.textContent).toContain('change_email_old')
+    await click('admin.settings.emailTemplates.scenes.change_email_old'); await click('admin.common.lang.enUS')
+    await type('#registration-email-html', '<html><body><img src="https://example.test/a.png"><a href="https://example.test">safe</a><p>{{code}} {{expire_minutes}}</p></body></html>')
+    container.querySelector<HTMLInputElement>('#registration-email-html-enabled')!.click(); await nextTick()
+    const frame = container.querySelector<HTMLIFrameElement>('iframe')!
+    const doc = new DOMParser().parseFromString(frame.srcdoc, 'text/html')
+    expect(doc.querySelector('a')!.hasAttribute('href')).toBe(false)
+    expect(frame.getAttribute('sandbox')).toBe('')
+    expect(frame.srcdoc).toContain("img-src 'none'")
+    expect(doc.body.lastElementChild!.textContent).toContain('Do not share this code with anyone.')
+    save().click(); await flush(); expect(api.put).toHaveBeenCalledTimes(1)
+    expect(api.put.mock.calls[0]![0].scenes.change_email_old['en-US'].custom_html).toContain('https://example.test/a.png')
+  })
+  it('uses the real order response envelope without treating field order or unedited attachment copy as dirty', async () => {
+    await mount(); await click('admin.settings.tabs.emailTemplates'); await click('admin.settings.emailTemplates.scenes.order')
+    const canonical = orderFixture()
+    api.orderPut.mockResolvedValueOnce({ data: { data: { templates: canonical.templates, modules: canonical.modules, guest_tip: canonical.guest_tip, fulfillment_attachment_tip: { 'zh-CN': 'Attachment', 'zh-TW': 'Attachment', 'en-US': 'Attachment' } } } })
+    await type('#order-email-subject', 'Changed')
+    canonical.templates.default!['zh-CN']!.subject = 'Changed'
+    save().click(); await flush()
+    expect(api.orderPut).toHaveBeenCalledTimes(1)
+    expect(container.querySelector('[data-testid="email-templates-dirty"]')).toBeNull()
+  })
+  it('routes order save through the sole parent and keeps in-flight edits dirty with real leave guards', async () => {
+    const router = await mount(); await click('admin.settings.tabs.emailTemplates')
+    await click('admin.settings.emailTemplates.scenes.order')
+    await type('#order-email-subject', '  Submitted order  ')
+    let finish!: (value: unknown) => void
+    api.orderPut.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+    save().click(); await nextTick()
+    expect(api.orderPut).toHaveBeenCalledTimes(1)
+    expect(save().disabled).toBe(true)
+    expect(save().textContent).toContain('admin.settings.actions.saving')
+    await type('#order-email-subject', 'Later order')
+    await click('admin.settings.emailTemplates.scenes.reset')
+    expect(save().disabled).toBe(true)
+    const canonical = orderFixture(); canonical.templates.default!['zh-CN']!.subject = 'Submitted order'
+    finish({ data: { data: canonical } }); await flush()
+    await click('admin.settings.emailTemplates.scenes.order')
+    expect(container.querySelector<HTMLInputElement>('#order-email-subject')!.value).toBe('Later order')
+    expect(container.querySelector('[data-testid="email-templates-dirty"]')).not.toBeNull()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const event = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(true)
+    await router.push('/other')
+    expect(router.currentRoute.value.path).toBe('/')
+    expect(confirm).toHaveBeenCalled()
+    await click('admin.settings.orderEmailTemplate.resetCurrent')
+    expect(container.querySelector<HTMLInputElement>('#order-email-subject')!.value).toBe('Submitted order')
+    expect(container.querySelector('[data-testid="email-templates-dirty"]')).toBeNull()
+    await router.push('/other'); expect(router.currentRoute.value.path).toBe('/other')
+    expect(api.put).not.toHaveBeenCalled()
+    expect(api.orderPut.mock.calls[0]![0].guest_tip).toEqual(orderFixture().guest_tip)
+    expect(api.orderPut.mock.calls[0]![0].modules).toEqual(orderFixture().modules)
+  })
+  it('blocks the sole parent save on incomplete order GET, then retries only the failed owner', async () => {
+    api.orderGet.mockResolvedValueOnce({ data: { data: { templates: {} } } })
+    await mount(); await click('admin.settings.tabs.emailTemplates')
+    await type('#registration-email-subject', 'Protected draft')
+    await click('admin.settings.emailTemplates.scenes.order')
+    expect(save().disabled).toBe(true)
+    expect(container.querySelector<HTMLInputElement>('#order-email-subject')!.matches(':disabled')).toBe(true)
+    save().click(); await flush()
+    expect(api.orderPut).not.toHaveBeenCalled()
+    await click('admin.common.retry')
+    expect(api.orderGet).toHaveBeenCalledTimes(2)
+    expect(api.get).toHaveBeenCalledTimes(1)
+    expect(save().disabled).toBe(false)
+    await click('admin.settings.emailTemplates.scenes.registration')
+    expect(container.querySelector<HTMLInputElement>('#registration-email-subject')!.value).toBe('Protected draft')
+  })
+  it('renders purpose-correct desktop/mobile previews in every locale without leaking registration copy', async () => {
+    await mount(); await click('admin.settings.tabs.emailTemplates')
+    for (const [langButton, labels] of [
+      ['admin.common.lang.zhCN', ['重置密码', '绑定 Telegram', '更换邮箱', '更换邮箱']],
+      ['admin.common.lang.zhTW', ['重置密碼', '綁定 Telegram', '更換郵箱', '更換郵箱']],
+      ['admin.common.lang.enUS', ['Password reset', 'Telegram binding', 'Change email', 'Change email']],
+    ] as const) {
+      await click(langButton)
+      for (const [index, scene] of ['reset', 'telegram_bind', 'change_email_old', 'change_email_new'].entries()) {
+        await click(`admin.settings.emailTemplates.scenes.${scene}`)
+        const frame = container.querySelector<HTMLIFrameElement>('iframe')!
+        expect(frame.srcdoc).toContain(labels[index])
+        expect(frame.srcdoc).not.toContain('Use this code to finish creating your account.')
+        expect(frame.srcdoc).not.toContain('请使用下方验证码完成账号注册。')
+        expect(frame.srcdoc).toContain('17')
+        expect(frame.srcdoc).toContain('Demo')
+        expect(frame.srcdoc).toContain('000000')
+        expect(frame.getAttribute('sandbox')).toBe('')
+        expect(frame.srcdoc).toContain("img-src 'none'")
+        await click('Mobile')
+        expect(frame.parentElement!.classList.contains('max-w-[360px]')).toBe(true)
+        await click('Desktop')
+        expect(frame.parentElement!.classList.contains('max-w-[640px]')).toBe(true)
+      }
+    }
+  })
+})

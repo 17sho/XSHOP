@@ -1,0 +1,182 @@
+[
+  {
+    "brand": {
+      "site_icon": "/icon.png",
+      "site_logo": "/xshop-logo-v3.svg",
+      "site_name": "<Tenant> & Shop",
+      "site_url": "https://shop.example.com"
+    },
+    "html": "<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>邮箱验证码</title></head><body style=\"margin:0;padding:24px 12px;background:#f4f7fc;font-family:Arial,'Microsoft YaHei',sans-serif;color:#18243b\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;max-width:560px;margin:0 auto;background:#ffffff;border-collapse:separate;border-spacing:0;border-radius:20px;overflow:hidden;box-shadow:0 12px 30px #dce5f4\"><tr><td style=\"padding:32px 24px 38px;text-align:center;background:#2563eb;background-image:linear-gradient(125deg,#3b82f6,#1d4ed8);color:#ffffff\"><div style=\"width:60px;height:60px;border-radius:999px;background:#ffffff;margin:0 auto 17px;text-align:center\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;height:60px\"><tr><td align=\"center\" valign=\"middle\"><img src=\"https://shop.example.com/xshop-logo-v3-email.png\" alt=\"&lt;Tenant&gt; &amp; Shop\" width=\"46\" height=\"46\" style=\"display:block;width:46px;height:46px;border:0;object-fit:contain\"></td></tr></table></div><div style=\"color:#ffffff;font-size:20px;font-weight:700;line-height:1.5\">&lt;Tenant&gt; &amp; Shop</div><div style=\"display:inline-block;margin:15px 0 22px;padding:5px 14px;border-radius:999px;border:1px solid #bfdbfe;color:#ffffff;font-size:12px;letter-spacing:1px\">注册验证</div><h1 style=\"margin:0;color:#ffffff;font-size:27px;line-height:1.35\">邮箱验证码</h1><p style=\"margin:13px 0 0;color:#dbeafe;font-size:14px;line-height:1.7\">请使用下方验证码完成账号注册。</p></td></tr><tr><td style=\"padding:31px 27px 34px;background:#ffffff\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;background:#172554;border-collapse:separate;border-spacing:0;border-radius:14px\"><tr><td style=\"padding:24px 12px;text-align:center\"><div style=\"color:#bfdbfe;font-size:12px\">邮箱验证码</div><div style=\"margin:11px 0;color:#dbeafe;font-size:34px;font-weight:700;letter-spacing:6px;word-break:break-all\">000000</div><div style=\"color:#bfdbfe;font-size:12px;line-height:1.7\">验证码 17 分钟内有效 · 请勿向任何人透露验证码。</div></td></tr></table><p style=\"margin:27px 0 0;color:#475569;font-size:13px;line-height:1.8\">如果不是您本人操作，请忽略此邮件。</p><div style=\"margin:20px 0 17px;border-top:1px dashed #cbd5e1\"></div><p style=\"margin:0 0 4px;color:#64748b;font-size:12px;line-height:1.5\">祝好</p><p style=\"margin:0;color:#1e293b;font-size:14px;font-weight:600;line-height:1.5\">&lt;Tenant&gt; &amp; Shop 团队</p><p style=\"margin:10px 0 0;color:#64748b;font-size:12px;line-height:1.6\">站点地址：<a href=\"https://shop.example.com\" style=\"color:#2563eb;text-decoration:none;font-weight:500\">https://shop.example.com</a></p></td></tr><tr><td style=\"padding:29px 25px 25px;text-align:center;background:#172554;color:#cbd5e1\"><div style=\"color:#93c5fd;font-size:15px;font-weight:700\">&lt;Tenant&gt; &amp; Shop</div><div style=\"margin:8px 0 17px;color:#93c5fd;font-size:13px\">安心选购 · 即时交付</div><p style=\"margin:0;color:#cbd5e1;font-size:11px;line-height:1.8\">本邮件由系统自动发送。我们不会索要您的密码、支付信息或验证码，请谨防冒充客服的消息。</p><p style=\"margin:15px 0 0;color:#94a3b8;font-size:11px\">© 2026 &lt;Tenant&gt; &amp; Shop</p></td></tr></table></body></html>",
+    "lang": "zh-CN",
+    "minutes": 17,
+    "mode": "default",
+    "plain": "您的验证码是：000000\n\n请使用此验证码完成账号注册，17 分钟内有效。\n\n站点：<Tenant> & Shop\n网址：https://shop.example.com\n\n请勿向任何人透露验证码。\n如果不是您本人操作，请忽略此邮件。\n本邮件由系统自动发送。我们不会索要您的密码、支付信息或验证码，请谨防冒充客服的消息。",
+    "subject": "<Tenant> & Shop - 注册验证码",
+    "template": {
+      "subject": "{{site_name}} - 注册验证码",
+      "body": "您的验证码是：{{code}}\n\n请使用此验证码完成账号注册，{{expire_minutes}} 分钟内有效。\n\n站点：{{site_name}}\n网址：{{site_url}}",
+      "custom_html": "",
+      "custom_html_enabled": false
+    }
+  },
+  {
+    "brand": {
+      "site_icon": "/icon.png",
+      "site_logo": "/xshop-logo-v3.svg",
+      "site_name": "<Tenant> & Shop",
+      "site_url": "https://shop.example.com"
+    },
+    "html": "<!doctype html><html lang=\"zh-CN\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>邮箱验证码</title></head><body style=\"margin:0;padding:24px 12px;background:#f4f7fc;font-family:Arial,'Microsoft YaHei',sans-serif;color:#18243b\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;max-width:560px;margin:0 auto;background:#ffffff;border-collapse:separate;border-spacing:0;border-radius:20px;overflow:hidden;box-shadow:0 12px 30px #dce5f4\"><tr><td style=\"padding:32px 24px 38px;text-align:center;background:#2563eb;background-image:linear-gradient(125deg,#3b82f6,#1d4ed8);color:#ffffff\"><div style=\"width:60px;height:60px;border-radius:999px;background:#ffffff;margin:0 auto 17px;text-align:center\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;height:60px\"><tr><td align=\"center\" valign=\"middle\"><img src=\"https://shop.example.com/xshop-logo-v3-email.png\" alt=\"&lt;Tenant&gt; &amp; Shop\" width=\"46\" height=\"46\" style=\"display:block;width:46px;height:46px;border:0;object-fit:contain\"></td></tr></table></div><div style=\"color:#ffffff;font-size:20px;font-weight:700;line-height:1.5\">&lt;Tenant&gt; &amp; Shop</div><div style=\"display:inline-block;margin:15px 0 22px;padding:5px 14px;border-radius:999px;border:1px solid #bfdbfe;color:#ffffff;font-size:12px;letter-spacing:1px\">注册验证</div><h1 style=\"margin:0;color:#ffffff;font-size:27px;line-height:1.35\">邮箱验证码</h1><p style=\"margin:13px 0 0;color:#dbeafe;font-size:14px;line-height:1.7\">Edited &lt;customer&gt; &amp; &lt;Tenant&gt; &amp; Shop<br>000000 / 17 https://shop.example.com</p></td></tr><tr><td style=\"padding:31px 27px 34px;background:#ffffff\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;background:#172554;border-collapse:separate;border-spacing:0;border-radius:14px\"><tr><td style=\"padding:24px 12px;text-align:center\"><div style=\"color:#bfdbfe;font-size:12px\">邮箱验证码</div><div style=\"margin:11px 0;color:#dbeafe;font-size:34px;font-weight:700;letter-spacing:6px;word-break:break-all\">000000</div><div style=\"color:#bfdbfe;font-size:12px;line-height:1.7\">验证码 17 分钟内有效 · 请勿向任何人透露验证码。</div></td></tr></table><p style=\"margin:27px 0 0;color:#475569;font-size:13px;line-height:1.8\">如果不是您本人操作，请忽略此邮件。</p><div style=\"margin:20px 0 17px;border-top:1px dashed #cbd5e1\"></div><p style=\"margin:0 0 4px;color:#64748b;font-size:12px;line-height:1.5\">祝好</p><p style=\"margin:0;color:#1e293b;font-size:14px;font-weight:600;line-height:1.5\">&lt;Tenant&gt; &amp; Shop 团队</p><p style=\"margin:10px 0 0;color:#64748b;font-size:12px;line-height:1.6\">站点地址：<a href=\"https://shop.example.com\" style=\"color:#2563eb;text-decoration:none;font-weight:500\">https://shop.example.com</a></p></td></tr><tr><td style=\"padding:29px 25px 25px;text-align:center;background:#172554;color:#cbd5e1\"><div style=\"color:#93c5fd;font-size:15px;font-weight:700\">&lt;Tenant&gt; &amp; Shop</div><div style=\"margin:8px 0 17px;color:#93c5fd;font-size:13px\">安心选购 · 即时交付</div><p style=\"margin:0;color:#cbd5e1;font-size:11px;line-height:1.8\">本邮件由系统自动发送。我们不会索要您的密码、支付信息或验证码，请谨防冒充客服的消息。</p><p style=\"margin:15px 0 0;color:#94a3b8;font-size:11px\">© 2026 &lt;Tenant&gt; &amp; Shop</p></td></tr></table></body></html>",
+    "lang": "zh-CN",
+    "minutes": 17,
+    "mode": "edited",
+    "plain": "Edited <customer> & <Tenant> & Shop\n000000 / 17 https://shop.example.com\n\n请勿向任何人透露验证码。\n如果不是您本人操作，请忽略此邮件。\n本邮件由系统自动发送。我们不会索要您的密码、支付信息或验证码，请谨防冒充客服的消息。",
+    "subject": "<Tenant> & Shop - 注册验证码",
+    "template": {
+      "subject": "{{site_name}} - 注册验证码",
+      "body": "Edited <customer> & {{site_name}}\n{{code}} / {{expire_minutes}} {{site_url}}",
+      "custom_html": "",
+      "custom_html_enabled": false
+    }
+  },
+  {
+    "brand": {
+      "site_icon": "/icon.png",
+      "site_logo": "/xshop-logo-v3.svg",
+      "site_name": "<Tenant> & Shop",
+      "site_url": "https://shop.example.com"
+    },
+    "html": "<!doctype html><html><body><div><img src=\"https://example.test/logo.png\" alt=\"Brand\"/><a href=\"https://example.test\">Visit</a><table><tbody><tr><td>&lt;Tenant&gt; &amp; Shop 000000 17</td></tr></tbody></table></div><p style=\"display:block;color:#475569;font:13px Arial;line-height:1.8\">请勿向任何人透露验证码。<br>如果不是您本人操作，请忽略此邮件。<br>本邮件由系统自动发送。我们不会索要您的密码、支付信息或验证码，请谨防冒充客服的消息。</p></body></html>",
+    "lang": "zh-CN",
+    "minutes": 17,
+    "mode": "advanced",
+    "plain": "您的验证码是：000000\n\n请使用此验证码完成账号注册，17 分钟内有效。\n\n站点：<Tenant> & Shop\n网址：https://shop.example.com\n\n请勿向任何人透露验证码。\n如果不是您本人操作，请忽略此邮件。\n本邮件由系统自动发送。我们不会索要您的密码、支付信息或验证码，请谨防冒充客服的消息。",
+    "subject": "<Tenant> & Shop - 注册验证码",
+    "template": {
+      "subject": "{{site_name}} - 注册验证码",
+      "body": "您的验证码是：{{code}}\n\n请使用此验证码完成账号注册，{{expire_minutes}} 分钟内有效。\n\n站点：{{site_name}}\n网址：{{site_url}}",
+      "custom_html": "<!doctype html><html lang=\"en\" style=\"display:none\"><head><meta charset=\"utf-8\"><title>Static head</title></head><body style=\"display:none\"><img src=\"https://example.test/logo.png\" alt=\"Brand\"><a href=\"https://example.test\">Visit</a><table><tr><td>{{site_name}} {{code}} {{expire_minutes}}",
+      "custom_html_enabled": true
+    }
+  },
+  {
+    "brand": {
+      "site_icon": "/icon.png",
+      "site_logo": "/xshop-logo-v3.svg",
+      "site_name": "<Tenant> & Shop",
+      "site_url": "https://shop.example.com"
+    },
+    "html": "<!doctype html><html lang=\"zh-TW\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>郵箱驗證碼</title></head><body style=\"margin:0;padding:24px 12px;background:#f4f7fc;font-family:Arial,'Microsoft YaHei',sans-serif;color:#18243b\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;max-width:560px;margin:0 auto;background:#ffffff;border-collapse:separate;border-spacing:0;border-radius:20px;overflow:hidden;box-shadow:0 12px 30px #dce5f4\"><tr><td style=\"padding:32px 24px 38px;text-align:center;background:#2563eb;background-image:linear-gradient(125deg,#3b82f6,#1d4ed8);color:#ffffff\"><div style=\"width:60px;height:60px;border-radius:999px;background:#ffffff;margin:0 auto 17px;text-align:center\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;height:60px\"><tr><td align=\"center\" valign=\"middle\"><img src=\"https://shop.example.com/xshop-logo-v3-email.png\" alt=\"&lt;Tenant&gt; &amp; Shop\" width=\"46\" height=\"46\" style=\"display:block;width:46px;height:46px;border:0;object-fit:contain\"></td></tr></table></div><div style=\"color:#ffffff;font-size:20px;font-weight:700;line-height:1.5\">&lt;Tenant&gt; &amp; Shop</div><div style=\"display:inline-block;margin:15px 0 22px;padding:5px 14px;border-radius:999px;border:1px solid #bfdbfe;color:#ffffff;font-size:12px;letter-spacing:1px\">註冊驗證</div><h1 style=\"margin:0;color:#ffffff;font-size:27px;line-height:1.35\">郵箱驗證碼</h1><p style=\"margin:13px 0 0;color:#dbeafe;font-size:14px;line-height:1.7\">請使用下方驗證碼完成帳號註冊。</p></td></tr><tr><td style=\"padding:31px 27px 34px;background:#ffffff\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;background:#172554;border-collapse:separate;border-spacing:0;border-radius:14px\"><tr><td style=\"padding:24px 12px;text-align:center\"><div style=\"color:#bfdbfe;font-size:12px\">郵箱驗證碼</div><div style=\"margin:11px 0;color:#dbeafe;font-size:34px;font-weight:700;letter-spacing:6px;word-break:break-all\">000000</div><div style=\"color:#bfdbfe;font-size:12px;line-height:1.7\">驗證碼 17 分鐘內有效 · 請勿向任何人透露驗證碼。</div></td></tr></table><p style=\"margin:27px 0 0;color:#475569;font-size:13px;line-height:1.8\">如果不是您本人操作，請忽略此郵件。</p><div style=\"margin:20px 0 17px;border-top:1px dashed #cbd5e1\"></div><p style=\"margin:0 0 4px;color:#64748b;font-size:12px;line-height:1.5\">祝好</p><p style=\"margin:0;color:#1e293b;font-size:14px;font-weight:600;line-height:1.5\">&lt;Tenant&gt; &amp; Shop 團隊</p><p style=\"margin:10px 0 0;color:#64748b;font-size:12px;line-height:1.6\">站點地址：<a href=\"https://shop.example.com\" style=\"color:#2563eb;text-decoration:none;font-weight:500\">https://shop.example.com</a></p></td></tr><tr><td style=\"padding:29px 25px 25px;text-align:center;background:#172554;color:#cbd5e1\"><div style=\"color:#93c5fd;font-size:15px;font-weight:700\">&lt;Tenant&gt; &amp; Shop</div><div style=\"margin:8px 0 17px;color:#93c5fd;font-size:13px\">安心選購 · 即時交付</div><p style=\"margin:0;color:#cbd5e1;font-size:11px;line-height:1.8\">本郵件由系統自動發送。我們不會索取您的密碼、付款資訊或驗證碼，請留意冒充客服的訊息。</p><p style=\"margin:15px 0 0;color:#94a3b8;font-size:11px\">© 2026 &lt;Tenant&gt; &amp; Shop</p></td></tr></table></body></html>",
+    "lang": "zh-TW",
+    "minutes": 17,
+    "mode": "default",
+    "plain": "您的驗證碼是：000000\n\n請使用此驗證碼完成帳號註冊，17 分鐘內有效。\n\n站點：<Tenant> & Shop\n網址：https://shop.example.com\n\n請勿向任何人透露驗證碼。\n如果不是您本人操作，請忽略此郵件。\n本郵件由系統自動發送。我們不會索取您的密碼、付款資訊或驗證碼，請留意冒充客服的訊息。",
+    "subject": "<Tenant> & Shop - 註冊驗證碼",
+    "template": {
+      "subject": "{{site_name}} - 註冊驗證碼",
+      "body": "您的驗證碼是：{{code}}\n\n請使用此驗證碼完成帳號註冊，{{expire_minutes}} 分鐘內有效。\n\n站點：{{site_name}}\n網址：{{site_url}}",
+      "custom_html": "",
+      "custom_html_enabled": false
+    }
+  },
+  {
+    "brand": {
+      "site_icon": "/icon.png",
+      "site_logo": "/xshop-logo-v3.svg",
+      "site_name": "<Tenant> & Shop",
+      "site_url": "https://shop.example.com"
+    },
+    "html": "<!doctype html><html lang=\"zh-TW\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>郵箱驗證碼</title></head><body style=\"margin:0;padding:24px 12px;background:#f4f7fc;font-family:Arial,'Microsoft YaHei',sans-serif;color:#18243b\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;max-width:560px;margin:0 auto;background:#ffffff;border-collapse:separate;border-spacing:0;border-radius:20px;overflow:hidden;box-shadow:0 12px 30px #dce5f4\"><tr><td style=\"padding:32px 24px 38px;text-align:center;background:#2563eb;background-image:linear-gradient(125deg,#3b82f6,#1d4ed8);color:#ffffff\"><div style=\"width:60px;height:60px;border-radius:999px;background:#ffffff;margin:0 auto 17px;text-align:center\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;height:60px\"><tr><td align=\"center\" valign=\"middle\"><img src=\"https://shop.example.com/xshop-logo-v3-email.png\" alt=\"&lt;Tenant&gt; &amp; Shop\" width=\"46\" height=\"46\" style=\"display:block;width:46px;height:46px;border:0;object-fit:contain\"></td></tr></table></div><div style=\"color:#ffffff;font-size:20px;font-weight:700;line-height:1.5\">&lt;Tenant&gt; &amp; Shop</div><div style=\"display:inline-block;margin:15px 0 22px;padding:5px 14px;border-radius:999px;border:1px solid #bfdbfe;color:#ffffff;font-size:12px;letter-spacing:1px\">註冊驗證</div><h1 style=\"margin:0;color:#ffffff;font-size:27px;line-height:1.35\">郵箱驗證碼</h1><p style=\"margin:13px 0 0;color:#dbeafe;font-size:14px;line-height:1.7\">Edited &lt;customer&gt; &amp; &lt;Tenant&gt; &amp; Shop<br>000000 / 17 https://shop.example.com</p></td></tr><tr><td style=\"padding:31px 27px 34px;background:#ffffff\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;background:#172554;border-collapse:separate;border-spacing:0;border-radius:14px\"><tr><td style=\"padding:24px 12px;text-align:center\"><div style=\"color:#bfdbfe;font-size:12px\">郵箱驗證碼</div><div style=\"margin:11px 0;color:#dbeafe;font-size:34px;font-weight:700;letter-spacing:6px;word-break:break-all\">000000</div><div style=\"color:#bfdbfe;font-size:12px;line-height:1.7\">驗證碼 17 分鐘內有效 · 請勿向任何人透露驗證碼。</div></td></tr></table><p style=\"margin:27px 0 0;color:#475569;font-size:13px;line-height:1.8\">如果不是您本人操作，請忽略此郵件。</p><div style=\"margin:20px 0 17px;border-top:1px dashed #cbd5e1\"></div><p style=\"margin:0 0 4px;color:#64748b;font-size:12px;line-height:1.5\">祝好</p><p style=\"margin:0;color:#1e293b;font-size:14px;font-weight:600;line-height:1.5\">&lt;Tenant&gt; &amp; Shop 團隊</p><p style=\"margin:10px 0 0;color:#64748b;font-size:12px;line-height:1.6\">站點地址：<a href=\"https://shop.example.com\" style=\"color:#2563eb;text-decoration:none;font-weight:500\">https://shop.example.com</a></p></td></tr><tr><td style=\"padding:29px 25px 25px;text-align:center;background:#172554;color:#cbd5e1\"><div style=\"color:#93c5fd;font-size:15px;font-weight:700\">&lt;Tenant&gt; &amp; Shop</div><div style=\"margin:8px 0 17px;color:#93c5fd;font-size:13px\">安心選購 · 即時交付</div><p style=\"margin:0;color:#cbd5e1;font-size:11px;line-height:1.8\">本郵件由系統自動發送。我們不會索取您的密碼、付款資訊或驗證碼，請留意冒充客服的訊息。</p><p style=\"margin:15px 0 0;color:#94a3b8;font-size:11px\">© 2026 &lt;Tenant&gt; &amp; Shop</p></td></tr></table></body></html>",
+    "lang": "zh-TW",
+    "minutes": 17,
+    "mode": "edited",
+    "plain": "Edited <customer> & <Tenant> & Shop\n000000 / 17 https://shop.example.com\n\n請勿向任何人透露驗證碼。\n如果不是您本人操作，請忽略此郵件。\n本郵件由系統自動發送。我們不會索取您的密碼、付款資訊或驗證碼，請留意冒充客服的訊息。",
+    "subject": "<Tenant> & Shop - 註冊驗證碼",
+    "template": {
+      "subject": "{{site_name}} - 註冊驗證碼",
+      "body": "Edited <customer> & {{site_name}}\n{{code}} / {{expire_minutes}} {{site_url}}",
+      "custom_html": "",
+      "custom_html_enabled": false
+    }
+  },
+  {
+    "brand": {
+      "site_icon": "/icon.png",
+      "site_logo": "/xshop-logo-v3.svg",
+      "site_name": "<Tenant> & Shop",
+      "site_url": "https://shop.example.com"
+    },
+    "html": "<!doctype html><html><body><div><img src=\"https://example.test/logo.png\" alt=\"Brand\"/><a href=\"https://example.test\">Visit</a><table><tbody><tr><td>&lt;Tenant&gt; &amp; Shop 000000 17</td></tr></tbody></table></div><p style=\"display:block;color:#475569;font:13px Arial;line-height:1.8\">請勿向任何人透露驗證碼。<br>如果不是您本人操作，請忽略此郵件。<br>本郵件由系統自動發送。我們不會索取您的密碼、付款資訊或驗證碼，請留意冒充客服的訊息。</p></body></html>",
+    "lang": "zh-TW",
+    "minutes": 17,
+    "mode": "advanced",
+    "plain": "您的驗證碼是：000000\n\n請使用此驗證碼完成帳號註冊，17 分鐘內有效。\n\n站點：<Tenant> & Shop\n網址：https://shop.example.com\n\n請勿向任何人透露驗證碼。\n如果不是您本人操作，請忽略此郵件。\n本郵件由系統自動發送。我們不會索取您的密碼、付款資訊或驗證碼，請留意冒充客服的訊息。",
+    "subject": "<Tenant> & Shop - 註冊驗證碼",
+    "template": {
+      "subject": "{{site_name}} - 註冊驗證碼",
+      "body": "您的驗證碼是：{{code}}\n\n請使用此驗證碼完成帳號註冊，{{expire_minutes}} 分鐘內有效。\n\n站點：{{site_name}}\n網址：{{site_url}}",
+      "custom_html": "<!doctype html><html lang=\"en\" style=\"display:none\"><head><meta charset=\"utf-8\"><title>Static head</title></head><body style=\"display:none\"><img src=\"https://example.test/logo.png\" alt=\"Brand\"><a href=\"https://example.test\">Visit</a><table><tr><td>{{site_name}} {{code}} {{expire_minutes}}",
+      "custom_html_enabled": true
+    }
+  },
+  {
+    "brand": {
+      "site_icon": "/icon.png",
+      "site_logo": "/xshop-logo-v3.svg",
+      "site_name": "<Tenant> & Shop",
+      "site_url": "https://shop.example.com"
+    },
+    "html": "<!doctype html><html lang=\"en-US\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Email verification code</title></head><body style=\"margin:0;padding:24px 12px;background:#f4f7fc;font-family:Arial,'Microsoft YaHei',sans-serif;color:#18243b\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;max-width:560px;margin:0 auto;background:#ffffff;border-collapse:separate;border-spacing:0;border-radius:20px;overflow:hidden;box-shadow:0 12px 30px #dce5f4\"><tr><td style=\"padding:32px 24px 38px;text-align:center;background:#2563eb;background-image:linear-gradient(125deg,#3b82f6,#1d4ed8);color:#ffffff\"><div style=\"width:60px;height:60px;border-radius:999px;background:#ffffff;margin:0 auto 17px;text-align:center\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;height:60px\"><tr><td align=\"center\" valign=\"middle\"><img src=\"https://shop.example.com/xshop-logo-v3-email.png\" alt=\"&lt;Tenant&gt; &amp; Shop\" width=\"46\" height=\"46\" style=\"display:block;width:46px;height:46px;border:0;object-fit:contain\"></td></tr></table></div><div style=\"color:#ffffff;font-size:20px;font-weight:700;line-height:1.5\">&lt;Tenant&gt; &amp; Shop</div><div style=\"display:inline-block;margin:15px 0 22px;padding:5px 14px;border-radius:999px;border:1px solid #bfdbfe;color:#ffffff;font-size:12px;letter-spacing:1px\">Registration</div><h1 style=\"margin:0;color:#ffffff;font-size:27px;line-height:1.35\">Email verification code</h1><p style=\"margin:13px 0 0;color:#dbeafe;font-size:14px;line-height:1.7\">Use this code to finish creating your account.</p></td></tr><tr><td style=\"padding:31px 27px 34px;background:#ffffff\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;background:#172554;border-collapse:separate;border-spacing:0;border-radius:14px\"><tr><td style=\"padding:24px 12px;text-align:center\"><div style=\"color:#bfdbfe;font-size:12px\">Email verification code</div><div style=\"margin:11px 0;color:#dbeafe;font-size:34px;font-weight:700;letter-spacing:6px;word-break:break-all\">000000</div><div style=\"color:#bfdbfe;font-size:12px;line-height:1.7\">This code expires in 17 minutes. · Do not share this code with anyone.</div></td></tr></table><p style=\"margin:27px 0 0;color:#475569;font-size:13px;line-height:1.8\">If you didn&#39;t request this, you can ignore this email.</p><div style=\"margin:20px 0 17px;border-top:1px dashed #cbd5e1\"></div><p style=\"margin:0 0 4px;color:#64748b;font-size:12px;line-height:1.5\">Best regards,</p><p style=\"margin:0;color:#1e293b;font-size:14px;font-weight:600;line-height:1.5\">&lt;Tenant&gt; &amp; Shop Team</p><p style=\"margin:10px 0 0;color:#64748b;font-size:12px;line-height:1.6\">Store：<a href=\"https://shop.example.com\" style=\"color:#2563eb;text-decoration:none;font-weight:500\">https://shop.example.com</a></p></td></tr><tr><td style=\"padding:29px 25px 25px;text-align:center;background:#172554;color:#cbd5e1\"><div style=\"color:#93c5fd;font-size:15px;font-weight:700\">&lt;Tenant&gt; &amp; Shop</div><div style=\"margin:8px 0 17px;color:#93c5fd;font-size:13px\">Shop with confidence</div><p style=\"margin:0;color:#cbd5e1;font-size:11px;line-height:1.8\">This is an automated email. We will never ask for your password, payment details, or verification code.</p><p style=\"margin:15px 0 0;color:#94a3b8;font-size:11px\">© 2026 &lt;Tenant&gt; &amp; Shop</p></td></tr></table></body></html>",
+    "lang": "en-US",
+    "minutes": 17,
+    "mode": "default",
+    "plain": "Your verification code is: 000000\n\nUse this code to finish creating your account. This code expires in 17 minutes.\n\nSite: <Tenant> & Shop\nURL: https://shop.example.com\n\nDo not share this code with anyone.\nIf you didn't request this, you can ignore this email.\nThis is an automated email. We will never ask for your password, payment details, or verification code.",
+    "subject": "<Tenant> & Shop - Registration Code",
+    "template": {
+      "subject": "{{site_name}} - Registration Code",
+      "body": "Your verification code is: {{code}}\n\nUse this code to finish creating your account. This code expires in {{expire_minutes}} minutes.\n\nSite: {{site_name}}\nURL: {{site_url}}",
+      "custom_html": "",
+      "custom_html_enabled": false
+    }
+  },
+  {
+    "brand": {
+      "site_icon": "/icon.png",
+      "site_logo": "/xshop-logo-v3.svg",
+      "site_name": "<Tenant> & Shop",
+      "site_url": "https://shop.example.com"
+    },
+    "html": "<!doctype html><html lang=\"en-US\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Email verification code</title></head><body style=\"margin:0;padding:24px 12px;background:#f4f7fc;font-family:Arial,'Microsoft YaHei',sans-serif;color:#18243b\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;max-width:560px;margin:0 auto;background:#ffffff;border-collapse:separate;border-spacing:0;border-radius:20px;overflow:hidden;box-shadow:0 12px 30px #dce5f4\"><tr><td style=\"padding:32px 24px 38px;text-align:center;background:#2563eb;background-image:linear-gradient(125deg,#3b82f6,#1d4ed8);color:#ffffff\"><div style=\"width:60px;height:60px;border-radius:999px;background:#ffffff;margin:0 auto 17px;text-align:center\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;height:60px\"><tr><td align=\"center\" valign=\"middle\"><img src=\"https://shop.example.com/xshop-logo-v3-email.png\" alt=\"&lt;Tenant&gt; &amp; Shop\" width=\"46\" height=\"46\" style=\"display:block;width:46px;height:46px;border:0;object-fit:contain\"></td></tr></table></div><div style=\"color:#ffffff;font-size:20px;font-weight:700;line-height:1.5\">&lt;Tenant&gt; &amp; Shop</div><div style=\"display:inline-block;margin:15px 0 22px;padding:5px 14px;border-radius:999px;border:1px solid #bfdbfe;color:#ffffff;font-size:12px;letter-spacing:1px\">Registration</div><h1 style=\"margin:0;color:#ffffff;font-size:27px;line-height:1.35\">Email verification code</h1><p style=\"margin:13px 0 0;color:#dbeafe;font-size:14px;line-height:1.7\">Edited &lt;customer&gt; &amp; &lt;Tenant&gt; &amp; Shop<br>000000 / 17 https://shop.example.com</p></td></tr><tr><td style=\"padding:31px 27px 34px;background:#ffffff\"><table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"width:100%;background:#172554;border-collapse:separate;border-spacing:0;border-radius:14px\"><tr><td style=\"padding:24px 12px;text-align:center\"><div style=\"color:#bfdbfe;font-size:12px\">Email verification code</div><div style=\"margin:11px 0;color:#dbeafe;font-size:34px;font-weight:700;letter-spacing:6px;word-break:break-all\">000000</div><div style=\"color:#bfdbfe;font-size:12px;line-height:1.7\">This code expires in 17 minutes. · Do not share this code with anyone.</div></td></tr></table><p style=\"margin:27px 0 0;color:#475569;font-size:13px;line-height:1.8\">If you didn&#39;t request this, you can ignore this email.</p><div style=\"margin:20px 0 17px;border-top:1px dashed #cbd5e1\"></div><p style=\"margin:0 0 4px;color:#64748b;font-size:12px;line-height:1.5\">Best regards,</p><p style=\"margin:0;color:#1e293b;font-size:14px;font-weight:600;line-height:1.5\">&lt;Tenant&gt; &amp; Shop Team</p><p style=\"margin:10px 0 0;color:#64748b;font-size:12px;line-height:1.6\">Store：<a href=\"https://shop.example.com\" style=\"color:#2563eb;text-decoration:none;font-weight:500\">https://shop.example.com</a></p></td></tr><tr><td style=\"padding:29px 25px 25px;text-align:center;background:#172554;color:#cbd5e1\"><div style=\"color:#93c5fd;font-size:15px;font-weight:700\">&lt;Tenant&gt; &amp; Shop</div><div style=\"margin:8px 0 17px;color:#93c5fd;font-size:13px\">Shop with confidence</div><p style=\"margin:0;color:#cbd5e1;font-size:11px;line-height:1.8\">This is an automated email. We will never ask for your password, payment details, or verification code.</p><p style=\"margin:15px 0 0;color:#94a3b8;font-size:11px\">© 2026 &lt;Tenant&gt; &amp; Shop</p></td></tr></table></body></html>",
+    "lang": "en-US",
+    "minutes": 17,
+    "mode": "edited",
+    "plain": "Edited <customer> & <Tenant> & Shop\n000000 / 17 https://shop.example.com\n\nDo not share this code with anyone.\nIf you didn't request this, you can ignore this email.\nThis is an automated email. We will never ask for your password, payment details, or verification code.",
+    "subject": "<Tenant> & Shop - Registration Code",
+    "template": {
+      "subject": "{{site_name}} - Registration Code",
+      "body": "Edited <customer> & {{site_name}}\n{{code}} / {{expire_minutes}} {{site_url}}",
+      "custom_html": "",
+      "custom_html_enabled": false
+    }
+  },
+  {
+    "brand": {
+      "site_icon": "/icon.png",
+      "site_logo": "/xshop-logo-v3.svg",
+      "site_name": "<Tenant> & Shop",
+      "site_url": "https://shop.example.com"
+    },
+    "html": "<!doctype html><html><body><div><img src=\"https://example.test/logo.png\" alt=\"Brand\"/><a href=\"https://example.test\">Visit</a><table><tbody><tr><td>&lt;Tenant&gt; &amp; Shop 000000 17</td></tr></tbody></table></div><p style=\"display:block;color:#475569;font:13px Arial;line-height:1.8\">Do not share this code with anyone.<br>If you didn&#39;t request this, you can ignore this email.<br>This is an automated email. We will never ask for your password, payment details, or verification code.</p></body></html>",
+    "lang": "en-US",
+    "minutes": 17,
+    "mode": "advanced",
+    "plain": "Your verification code is: 000000\n\nUse this code to finish creating your account. This code expires in 17 minutes.\n\nSite: <Tenant> & Shop\nURL: https://shop.example.com\n\nDo not share this code with anyone.\nIf you didn't request this, you can ignore this email.\nThis is an automated email. We will never ask for your password, payment details, or verification code.",
+    "subject": "<Tenant> & Shop - Registration Code",
+    "template": {
+      "subject": "{{site_name}} - Registration Code",
+      "body": "Your verification code is: {{code}}\n\nUse this code to finish creating your account. This code expires in {{expire_minutes}} minutes.\n\nSite: {{site_name}}\nURL: {{site_url}}",
+      "custom_html": "<!doctype html><html lang=\"en\" style=\"display:none\"><head><meta charset=\"utf-8\"><title>Static head</title></head><body style=\"display:none\"><img src=\"https://example.test/logo.png\" alt=\"Brand\"><a href=\"https://example.test\">Visit</a><table><tr><td>{{site_name}} {{code}} {{expire_minutes}}",
+      "custom_html_enabled": true
+    }
+  }
+]
