@@ -935,7 +935,7 @@ onBeforeUnmount(() => {
             </Button>
             <div class="text-sm text-muted-foreground hidden sm:block">{{ t('admin.layout.workspace') }}</div>
           </div>
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-1 sm:gap-2">
             <XshopVersionBadge :version="appVersion" />
             <Select
               :model-value="locale"

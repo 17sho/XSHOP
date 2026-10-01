@@ -26,7 +26,7 @@ func Client() *http.Client {
 // Register must be called on the existing JWT+RBAC authorized group. The extra
 // guard forbids ordinary administrators even if a wildcard role is granted.
 func Register(group gin.IRoutes, client *http.Client) {
-	for _, action := range []string{"status", "check", "install", "restart"} {
+	for _, action := range []string{"status", "check", "install", "restart", "rollback"} {
 		action := action
 		method := http.MethodPost
 		if action == "status" {
@@ -90,7 +90,7 @@ func Register(group gin.IRoutes, client *http.Client) {
 				c.JSON(503, response.Response{StatusCode: 503, Msg: "升级状态无效", Data: nil})
 				return
 			}
-			if (action == "install" || action == "restart") && resp.StatusCode == 202 {
+			if (action == "install" || action == "restart" || action == "rollback") && resp.StatusCode == 202 {
 				c.JSON(202, response.Response{StatusCode: 0, Msg: "success", Data: payload})
 				return
 			}

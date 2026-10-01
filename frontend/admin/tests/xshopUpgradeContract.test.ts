@@ -22,7 +22,7 @@ test('Chinese upgrade panel rechecks permission in actions and requires confirma
  assert.doesNotMatch(layout, /id: 'xshop-upgrade'/)
  assert.match(layout, /addEventListener\('appversionrefresh'/)
  assert.match(read('src/views/admin/XshopUpgrade.vue'), /<XshopVersionBadge/)
- assert.match(panel, /api.post\('\/admin\/xshop-upgrade\/restart'\)/)
+ assert.match(panel, /api.post\('\/admin\/xshop-upgrade\/restart', undefined, \{ expectedRestartUntil: restartUntil \}\)/)
  assert.match(panel, /fixed right-4 top-16 sm:absolute sm:right-0 sm:top-auto/)
  assert.match(panel, /max-h-\[calc\(100dvh-5rem\)\]/)
  assert.doesNotMatch(panel, /github_pat_|ghp_|gho_|Authorization.*token/i)

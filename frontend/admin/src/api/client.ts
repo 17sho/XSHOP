@@ -10,11 +10,13 @@ const t = (key: string, params?: Record<string, unknown>) =>
 
 interface NotifiedError extends Error {
   __notified?: boolean
+  status?: number
 }
 
-const createNotifiedError = (message: string): NotifiedError => {
+const createNotifiedError = (message: string, status?: number): NotifiedError => {
   const error = new Error(message) as NotifiedError
   error.__notified = true
+  error.status = status
   return error
 }
 
@@ -131,10 +133,22 @@ async function request(method: string, path: string, bodyOrOptions?: any, option
   } catch (err: any) {
     clearTimeout(timer)
     const message = t('common.api.networkError')
-    notifyError(message)
-    return Promise.reject(createNotifiedError(message))
+    const quiet = /^\/admin\/xshop-upgrade\/(status|restart|rollback)$/.test(path) && typeof opts.expectedRestartUntil === 'number' && Date.now() < opts.expectedRestartUntil && opts.expectedRestartUntil <= Date.now() + 120000
+    if (!quiet) notifyError(message)
+    return Promise.reject(Object.assign(new Error(message), { status: 0, __notified: !quiet }))
   } finally {
     clearTimeout(timer)
+  }
+
+  // Narrow, per-request restart reconciliation; auth and ordinary errors stay loud.
+  const restartWindow = () => /^\/admin\/xshop-upgrade\/(status|restart|rollback)$/.test(path)
+    && typeof opts.expectedRestartUntil === 'number' && Date.now() < opts.expectedRestartUntil
+    && opts.expectedRestartUntil <= Date.now() + 120000
+  if (!response.ok) {
+    const status = response.status
+    const message = getHttpErrorMessage(status)
+    const quiet = restartWindow() && (status === 502 || status === 503)
+    if (quiet) return Promise.reject(Object.assign(new Error(message), { status, __notified: false }))
   }
 
   // Blob response
@@ -150,13 +164,13 @@ async function request(method: string, path: string, bodyOrOptions?: any, option
         redirectToLogin()
       }
       notifyError(message)
-      return Promise.reject(createNotifiedError(message))
+      return Promise.reject(createNotifiedError(message, response.status))
     }
     if (contentType.includes('application/json')) {
       const fallbackMessage = t('common.api.requestFailed')
       const message = await readBlobErrorMessage(blob, fallbackMessage)
       notifyError(message)
-      return Promise.reject(createNotifiedError(message))
+      return Promise.reject(createNotifiedError(message, response.status))
     }
     return { data: blob, headers: responseHeadersToObject(response.headers) }
   }
@@ -173,11 +187,11 @@ async function request(method: string, path: string, bodyOrOptions?: any, option
         redirectToLogin()
       }
       notifyError(message)
-      return Promise.reject(createNotifiedError(message))
+      return Promise.reject(createNotifiedError(message, response.status))
     }
     const message = t('common.api.responseMissing')
     notifyError(message)
-    return Promise.reject(createNotifiedError(message))
+    return Promise.reject(createNotifiedError(message, response.status))
   }
 
   // HTTP error with JSON body
@@ -188,7 +202,7 @@ async function request(method: string, path: string, bodyOrOptions?: any, option
       redirectToLogin()
     }
     notifyError(message)
-    return Promise.reject(createNotifiedError(message))
+    return Promise.reject(createNotifiedError(message, response.status))
   }
 
   // Business error check
@@ -198,10 +212,10 @@ async function request(method: string, path: string, bodyOrOptions?: any, option
     if (data.status_code === 401 && !isLoginEndpoint(path)) {
       notifyError(message)
       redirectToLogin()
-      return Promise.reject(createNotifiedError(message))
+      return Promise.reject(createNotifiedError(message, response.status))
     }
     notifyError(message)
-    return Promise.reject(createNotifiedError(message))
+    return Promise.reject(createNotifiedError(message, response.status))
   }
 
   return { data }

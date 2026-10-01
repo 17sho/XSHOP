@@ -23,15 +23,16 @@ type Controller interface {
 	Healthy(context.Context, string) error
 }
 type State struct {
-	Version   string `json:"version,omitempty"`
-	Digest    string `json:"digest,omitempty"`
-	Prepared  bool   `json:"prepared,omitempty"`
-	HighWater uint64 `json:"high_water"`
-	Pending   bool   `json:"pending"`
-	Rollback  string `json:"rollback,omitempty"`
-	OldHash   string `json:"old_hash,omitempty"`
-	NewHash   string `json:"new_hash,omitempty"`
-	Result    string `json:"result"`
+	PreviousVersion string `json:"previous_version,omitempty"`
+	Version         string `json:"version,omitempty"`
+	Digest          string `json:"digest,omitempty"`
+	Prepared        bool   `json:"prepared,omitempty"`
+	HighWater       uint64 `json:"high_water"`
+	Pending         bool   `json:"pending"`
+	Rollback        string `json:"rollback,omitempty"`
+	OldHash         string `json:"old_hash,omitempty"`
+	NewHash         string `json:"new_hash,omitempty"`
+	Result          string `json:"result"`
 }
 type Engine struct {
 	Target, StateDir string
@@ -120,8 +121,9 @@ func (e *Engine) failClosed(err error) error {
 	e.journalMu.Unlock()
 	return err
 }
-func (e *Engine) saveState(s State) error { return e.saveJournal("state.json", s) }
-func (e *Engine) saveJournal(name string, s State) error {
+func (e *Engine) saveState(s State) error                { return e.saveJournal("state.json", s) }
+func (e *Engine) saveJournal(name string, s State) error { return e.saveJSON(name, s) }
+func (e *Engine) saveJSON(name string, s any) error {
 	raw, err := json.Marshal(s)
 	if err != nil {
 		return err
@@ -276,6 +278,10 @@ func (e *Engine) finish(s State, result string) error {
 		return errors.Join(err, e.fence(s))
 	}
 	e.verified(s.HighWater)
+	// Cleanup failure must not turn a verified install into an automatic rollback.
+	ctx, cancel := context.WithTimeout(context.Background(), RecoveryTimeout)
+	defer cancel()
+	_ = e.pruneLocked(ctx, terminal)
 	return nil
 }
 
@@ -370,7 +376,7 @@ func (e *Engine) Recover(ctx context.Context) error {
 			return e.failClosed(err)
 		}
 		e.verified(s.HighWater)
-		return nil
+		return e.pruneLocked(ctx, s)
 	}
 	return e.rollback(ctx, s)
 }

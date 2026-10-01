@@ -84,6 +84,20 @@ func (v *VerifiedManifest) Digest() string { return v.digest }
 // HighWaterSequence is a trusted durable per-channel/profile fence, not a version
 // string. This function has no rollback flag and never accepts sequence <= fence.
 func VerifyManifest(raw, signature []byte, policy Policy) (*VerifiedManifest, error) {
+	return verifyManifest(raw, signature, policy, false)
+}
+
+// InstalledIdentity authenticates only an exact durable installed identity. It
+// returns no staging capability and cannot authorize replay or installation.
+func InstalledIdentity(raw, signature []byte, policy Policy, version, digest, targetHash string) bool {
+	v, err := verifyManifest(raw, signature, policy, true)
+	if err != nil {
+		return false
+	}
+	m := v.Manifest()
+	return m.Sequence == policy.HighWaterSequence && m.Version == version && v.Digest() == digest && m.Files[0].SHA256 == targetHash && targetHash == policy.CurrentBinarySHA256
+}
+func verifyManifest(raw, signature []byte, policy Policy, installed bool) (*VerifiedManifest, error) {
 	if len(raw) == 0 || len(raw) > MaxManifestBytes {
 		return nil, errors.New("customupgrade: manifest size")
 	}
@@ -103,7 +117,7 @@ func VerifyManifest(raw, signature []byte, policy Policy) (*VerifiedManifest, er
 	if err := json.Unmarshal(raw, &m); err != nil {
 		return nil, err
 	}
-	if err := validatePolicy(m, policy); err != nil {
+	if err := validateManifestPolicy(m, policy, installed); err != nil {
 		return nil, err
 	}
 	h := sha256.Sum256(raw)

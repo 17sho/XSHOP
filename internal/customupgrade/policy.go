@@ -25,11 +25,12 @@ func safeName(s string) bool { return safeToken.MatchString(s) && !strings.Conta
 func validateArtifact(a Artifact, max uint64) bool {
 	return safeName(a.Name) && strings.HasSuffix(a.Name, ".tar.gz") && a.Size > 0 && a.Size <= max && lowerHash.MatchString(a.SHA256)
 }
-func validatePolicy(m Manifest, p Policy) error {
+func validatePolicy(m Manifest, p Policy) error { return validateManifestPolicy(m, p, false) }
+func validateManifestPolicy(m Manifest, p Policy, installed bool) error {
 	if m.Profile != "embedded-preview" || p.Profile != "embedded-preview" {
 		return ErrUnsupportedProfile
 	}
-	if m.SchemaVersion != 1 || m.Product != "XSHOP" || m.Sequence == 0 || m.Sequence <= p.HighWaterSequence {
+	if m.SchemaVersion != 1 || m.Product != "XSHOP" || m.Sequence == 0 || (!installed && m.Sequence <= p.HighWaterSequence) {
 		return fmt.Errorf("customupgrade: schema/product/sequence rejected")
 	}
 	if !safeName(m.Version) || !lowerCommit.MatchString(m.SourceCommit) {
@@ -56,7 +57,7 @@ func validatePolicy(m Manifest, p Policy) error {
 		seen[h] = true
 		matched = matched || h == p.CurrentBinarySHA256
 	}
-	if !matched {
+	if !matched && !installed {
 		return fmt.Errorf("customupgrade: current binary not compatible")
 	}
 	if !validateArtifact(m.Archive, MaxArchiveBytes) || !validateArtifact(m.Source, MaxSourceBytes) {

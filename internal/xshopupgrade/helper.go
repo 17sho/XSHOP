@@ -45,15 +45,17 @@ type Source interface {
 	Asset(context.Context, string, string, uint64) ([]byte, error)
 }
 type Status struct {
-	NeedRestart    bool   `json:"need_restart"`
-	Phase          string `json:"phase,omitempty"`
-	CurrentVersion string `json:"current_version,omitempty"`
-	State          string `json:"state"`
-	Version        string `json:"version,omitempty"`
-	Sequence       uint64 `json:"sequence,omitempty"`
-	Digest         string `json:"digest,omitempty"`
-	Message        string `json:"message,omitempty"`
-	Repository     string `json:"repository"`
+	NeedRestart       bool   `json:"need_restart"`
+	Phase             string `json:"phase,omitempty"`
+	CurrentVersion    string `json:"current_version,omitempty"`
+	PreviousVersion   string `json:"previous_version,omitempty"`
+	RollbackAvailable bool   `json:"rollback_available"`
+	State             string `json:"state"`
+	Version           string `json:"version,omitempty"`
+	Sequence          uint64 `json:"sequence,omitempty"`
+	Digest            string `json:"digest,omitempty"`
+	Message           string `json:"message,omitempty"`
+	Repository        string `json:"repository"`
 }
 type Helper struct {
 	Engine    *Engine
@@ -129,6 +131,9 @@ func (h *Helper) check(ctx context.Context) {
 		h.finish(Status{State: "failed", Message: "检查失败；请由服务器管理员查看受限日志"})
 		return
 	}
+	if h.installedLatest(ctx, tag) {
+		return
+	}
 	v, err := h.verify(ctx, tag)
 	if err != nil {
 		h.finish(Status{State: "failed", Message: "更新签名、兼容性或防回退校验失败"})
@@ -139,6 +144,36 @@ func (h *Helper) check(ctx context.Context) {
 	h.tag = tag
 	h.mu.Unlock()
 	h.finish(Status{State: "available", Version: m.Version, Sequence: m.Sequence, Digest: v.Digest(), Message: "已验证 XSHOP 自定义更新；数据库结构不变"})
+}
+func (h *Helper) installedLatest(ctx context.Context, tag string) bool {
+	if !ValidTag(tag) {
+		return false
+	}
+	h.Engine.mu.Lock()
+	defer h.Engine.mu.Unlock()
+	s, err := h.Engine.ReadState()
+	if err != nil || s.Pending || s.Result != "installed" || s.Version != tag {
+		return false
+	}
+	raw, err := h.Source.Asset(ctx, tag, "manifest.json", customupgrade.MaxManifestBytes)
+	if err != nil {
+		return false
+	}
+	sig, err := h.Source.Asset(ctx, tag, "manifest.sig", 64)
+	if err != nil {
+		return false
+	}
+	p, err := h.policy()
+	if err != nil || !customupgrade.InstalledIdentity(raw, sig, p, s.Version, s.Digest, s.NewHash) {
+		return false
+	}
+	bounded, cancel := context.WithTimeout(ctx, RecoveryTimeout)
+	defer cancel()
+	if h.Engine.Control.Healthy(bounded, s.NewHash) != nil {
+		return false
+	}
+	h.finish(Status{State: "up_to_date", CurrentVersion: s.Version, Version: s.Version, Sequence: s.HighWater, Digest: s.Digest, Message: "当前已是最新版本"})
+	return true
 }
 func (h *Helper) activationFailureMessage() string {
 	state, err := h.Engine.ReadState()
@@ -181,6 +216,31 @@ func (h *Helper) install(ctx context.Context, tag, digest string) {
 	staged, err := customupgrade.VerifyAndStage(ctx, bytes.NewReader(archive), filepath.Join(dir, "stage"), v)
 	if err != nil {
 		h.finish(Status{State: "failed", Message: "升级包校验失败"})
+		return
+	}
+	// Retain authenticated metadata beside Corresponding Source before preparing.
+	raw, metaErr := h.Source.Asset(ctx, tag, "manifest.json", customupgrade.MaxManifestBytes)
+	sig, sigErr := h.Source.Asset(ctx, tag, "manifest.sig", 64)
+	pMeta, policyErr := h.policy()
+	metadata, verifyErr := customupgrade.VerifyManifest(raw, sig, pMeta)
+	if metaErr != nil || sigErr != nil || policyErr != nil || verifyErr != nil || metadata.Digest() != digest {
+		h.finish(Status{State: "failed", Message: "源码元数据身份已变化"})
+		return
+	}
+	for name, data := range map[string][]byte{"manifest.json": raw, "manifest.sig": sig} {
+		if err = os.WriteFile(filepath.Join(dir, name), data, 0600); err != nil {
+			h.finish(Status{State: "failed", Message: "元数据保存失败"})
+			return
+		}
+	}
+	sourceFiles, fileErr := retainedFiles(dir)
+	if fileErr != nil {
+		h.finish(Status{State: "failed", Message: "源码身份保存失败"})
+		return
+	}
+	marker := &Engine{StateDir: dir}
+	if err = marker.saveJSON("retention.json", retentionIdentity{BinaryHash: staged.BinarySHA256, Files: sourceFiles}); err != nil {
+		h.finish(Status{State: "failed", Message: "源码身份保存失败"})
 		return
 	}
 	old, err := FileHash(h.Engine.Target)
@@ -239,7 +299,7 @@ func (h *Helper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					} else if journal.Result == "installed" {
 						s.State = "installed"
 					} else if journal.Result == "rolled_back" {
-						s.State = "failed"
+						s.State = "rolled_back"
 						s.Message = "旧程序已恢复；失败序号已禁用"
 					}
 				}
@@ -250,11 +310,28 @@ func (h *Helper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				s = Status{State: "prepared", NeedRestart: true, Phase: "prepared", Version: journal.Version, Sequence: journal.HighWater, Digest: journal.Digest}
 			}
 		}
+		if h.Engine != nil && !busy {
+			if journal, err := h.Engine.ReadState(); err == nil && !journal.Pending {
+				switch journal.Result {
+				case "installed":
+					s.CurrentVersion = journal.Version
+					s.PreviousVersion = journal.PreviousVersion
+					s.RollbackAvailable = h.Engine.retained(journal) == nil
+				case "rolled_back":
+					s.CurrentVersion = journal.PreviousVersion
+					s.PreviousVersion = ""
+					s.RollbackAvailable = false
+					if s.State == "idle" || s.State == "installed" {
+						s.State = "rolled_back"
+					}
+				}
+			}
+		}
 		s.Repository = Repository
 		json.NewEncoder(w).Encode(s)
 		return
 	}
-	if r.Method != "POST" || (r.URL.Path != "/check" && r.URL.Path != "/install" && r.URL.Path != "/restart") {
+	if r.Method != "POST" || (r.URL.Path != "/check" && r.URL.Path != "/install" && r.URL.Path != "/restart" && r.URL.Path != "/rollback") {
 		http.Error(w, "not found", 404)
 		return
 	}
@@ -264,7 +341,7 @@ func (h *Helper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	digest := ""
-	if r.URL.Path == "/check" || r.URL.Path == "/restart" {
+	if r.URL.Path == "/check" || r.URL.Path == "/restart" || r.URL.Path == "/rollback" {
 		if len(body) != 0 {
 			http.Error(w, "empty body required", 400)
 			return
@@ -308,6 +385,19 @@ func (h *Helper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	if r.URL.Path == "/rollback" {
+		if h.Engine == nil {
+			h.mu.Unlock()
+			http.Error(w, "rollback unavailable", 409)
+			return
+		}
+		s, err := h.Engine.ReadState()
+		if err != nil || s.Pending || s.Result != "installed" || h.Engine.retained(s) != nil {
+			h.mu.Unlock()
+			http.Error(w, "rollback unavailable", 409)
+			return
+		}
+	}
 	h.busy = true
 	tag := h.tag
 	h.status = Status{State: "checking", Repository: Repository}
@@ -317,13 +407,22 @@ func (h *Helper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/restart" {
 		h.status = Status{State: "restarting", Phase: "restarting", Repository: Repository}
 	}
+	if r.URL.Path == "/rollback" {
+		h.status = Status{State: "rolling_back", Phase: "rollback", Repository: Repository}
+	}
 	h.mu.Unlock()
 	w.WriteHeader(202)
 	fmt.Fprint(w, `{"accepted":true}`)
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		defer cancel()
-		if r.URL.Path == "/restart" {
+		if r.URL.Path == "/rollback" {
+			if err := h.Engine.Rollback(ctx); err != nil {
+				h.finish(Status{State: "failed", Phase: "rollback", Message: "回退或恢复失败，需要服务器管理员处理"})
+			} else {
+				h.finish(Status{State: "rolled_back", Message: "上一版本已恢复；数据库未回退"})
+			}
+		} else if r.URL.Path == "/restart" {
 			s, _ := h.Engine.ReadState()
 			if err := h.Engine.Restart(ctx); err != nil {
 				h.finish(Status{State: "failed", Phase: "restart", Message: h.activationFailureMessage()})
