@@ -1,34 +1,19 @@
-# Dujiao-Next
+# XSHOP
 
-Dujiao-Next is a digital goods e-commerce platform. This repository contains the complete
-application: the Go backend, the customer storefront, and the admin panel.
+XSHOP 是基于 Dujiao-Next 定制的数字商品商城源码，包含 Go 后端、Vue 用户商城和管理后台。
 
-## ❤️ Brand Partners (Sponsors)
+## 项目说明
 
-<table>
+- 本仓库提供去身份化的源码版本，默认品牌采用 XSHOP。
+- 不包含真实站点配置、业务数据库、订单、客户资料或部署凭据；示例配置必须在使用前自行填写。
+- 当前未提供 XSHOP 专用的一键安装器或正式发布包；请按下方源码构建说明进行构建。
+- 工作流保存在 `source-workflows/` 供参考，未作为 GitHub Actions 启用。
 
-<tr>
-<td width="180"><a href="https://www.vmrack.net/?ref_code=5iXmGUMf5f5"><img src="assets/partners/vmrack.jpeg" alt="CCTK.AI" width="150"></a></td>
-<td><a href="https://www.vmrack.net/?ref_code=5iXmGUMf5f5">Vmrack.com</a> 全球自动化云基础设施服务商 提供先进的云服务器、裸金属、CDN、媒体处理、对象存储和网络解决方案，助力企业轻松上云。
-⚡️官方合作闪购款，仅需76刀/年，三网优化线路，助力您业务起飞，<a href="https://www.vmrack.net/vps/flash-deals/2082383856451452928?ref_code=5iXmGUMf5f5">👉点我直达</a>
-</td>
-</tr>
+## 来源与许可证
 
-<tr>
-<td width="180"><a href="https://www.99cdn.com/"><img src="assets/partners/99cdn.jpg" alt="openmodel" width="150"></a></td>
-<td>99CDN 自建 CDN 平台，自主管理节点 · 智能流量调度 · 多级缓存加速。 <a href="https://www.99cdn.com/">99CDN</a> 是 EasyLink 旗下的商业化自建 CDN 与 DNS 智能调度平台，支持边缘缓存、分片缓存、多级回源、GTM 调度与边缘计算能力。</td>
-</tr>
+本项目基于 [Dujiao-Next](https://github.com/dujiao-next/dujiao-next)。保留原项目版权声明与许可证，具体条款见 [LICENSE](LICENSE)。XSHOP 是定制版本，不代表上游项目或其赞助商。
 
-<tr>
-<td width="180"><a href="https://niub.me"><img src="assets/partners/niub.png" alt="openmodel" width="150"></a></td>
-<td> <a href="https://niub.me">NIUB — 数字服务，一站直达(DujiaoNext自营旗舰店)</a> 正在寻找更便捷的 AI 服务、社交账号或数字礼品卡？NIUB（niub.me）专注提供多种虚拟商品与数字服务，让不同类型的数字需求都能在一个站点完成选购。
-我们重视清晰的商品信息、明确的交付方式和负责任的售后支持。每件商品的账号类型、适用地区、有效期限、使用条件与售后范围，均以对应商品页面说明为准。
-访问 NIUB，探索更多数字服务与虚拟商品。</td>
-</tr>
-
-
-
-</table>
+下方保留技术参考文档；其中的上游软件包、镜像和安装脚本不等同于 XSHOP 版本。
 
 ## Tech Stack
 
@@ -164,7 +149,9 @@ version; see `src/templates/registry.ts`. Append `?template=vault` to preview on
 **i18n.** Both frontends and all API responses are localized — Simplified Chinese, Traditional
 Chinese, and English. Do not hard-code user-facing strings on either side.
 
-## Quick Start (Deploy)
+## 上游部署参考（不是 XSHOP 安装方式）
+
+> 以下命令下载或运行的是上游 Dujiao-Next，不会安装本仓库的 XSHOP 定制源码。需要 XSHOP 时，请使用下方源码开发与构建说明。
 
 ### Official one-click installer (Ubuntu / Debian)
 
