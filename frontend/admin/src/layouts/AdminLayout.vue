@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import AdminRouteView from '@/components/AdminRouteView.vue'
+import XshopVersionBadge from '@/components/XshopVersionBadge.vue'
 import {
   LayoutDashboard,
   LogOut,
@@ -130,7 +131,7 @@ watch(() => route.path, () => {
 
 const navGroups = computed<NavGroup[]>(() => {
   const groups: NavGroup[] = [
-    ...(authStore.isSuper ? [{ id: 'xshop-upgrade', label: 'XSHOP 更新', icon: Download, items: [{ label: '在线升级', to: '/xshop-upgrade', icon: Download, permission: 'GET:/admin/xshop-upgrade/status' }] }] : []),
+
     {
       id: 'products',
       label: t('admin.navGroups.productManagement'),
@@ -636,7 +637,16 @@ const handleLogout = () => {
   window.location.href = adminUrl('/login')
 }
 
+let disposed = false
+const refreshAppVersion = async () => {
+  try {
+    const res = await adminAPI.getPublicConfig()
+    if (!disposed && typeof res.data?.data?.app_version === 'string') appVersion.value = res.data.data.app_version
+  } catch { /* Keep the last confirmed version while restart is unavailable. */ }
+}
+
 onMounted(() => {
+  window.addEventListener('appversionrefresh', refreshAppVersion)
   const savedTheme = localStorage.getItem('admin_theme')
   if (savedTheme === 'light' || savedTheme === 'dark') {
     applyTheme(savedTheme)
@@ -679,6 +689,8 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  disposed = true
+  window.removeEventListener('appversionrefresh', refreshAppVersion)
   window.removeEventListener('resize', handleResize)
 })
 </script>
@@ -924,6 +936,7 @@ onBeforeUnmount(() => {
             <div class="text-sm text-muted-foreground hidden sm:block">{{ t('admin.layout.workspace') }}</div>
           </div>
           <div class="flex items-center gap-2">
+            <XshopVersionBadge :version="appVersion" />
             <Select
               :model-value="locale"
               @update:modelValue="(value) => { if (value) applyLocale(String(value)) }"

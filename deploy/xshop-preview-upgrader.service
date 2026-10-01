@@ -39,6 +39,8 @@ ReadOnlyPaths=/opt/dujiao-next
 # SETUID/SETGID are needed to launch the fixed, group-free non-root hash worker.
 # Do not add SYS_PTRACE: the worker reads only the fixed preview process.
 CapabilityBoundingSet=CAP_DAC_OVERRIDE CAP_CHOWN CAP_SETUID CAP_SETGID
+# Full sandbox exec otherwise loses SETUID; worker explicitly clears inherited caps.
+AmbientCapabilities=CAP_SETUID
 MemoryMax=768M
 TasksMax=64
 

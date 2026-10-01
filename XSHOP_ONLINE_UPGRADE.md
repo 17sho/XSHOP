@@ -6,7 +6,7 @@
 
 - 应用已有 JWT（含数据库令牌撤销校验）和 RBAC 先执行。另加 `admin_id` + `admin_is_super == true` 检查；即使普通管理员获得通配权限，也不允许升级。
 - 后台中文页面：`xshop-upgrade`，仅超级管理员显示；确认后再次检查权限和更新摘要。
-- 应用接口：`GET /api/v1/admin/xshop-upgrade/status`，空正文 `POST .../check`，`POST .../install` 正文必须严格为 `{"digest":"64位小写十六进制"}`。不接受服务名、URL、命令、文件路径、重启或降级参数。
+- 应用接口：`GET /api/v1/admin/xshop-upgrade/status`，空正文 `POST .../check` 和 `POST .../restart`，`POST .../install` 正文必须严格为 `{"digest":"64位小写十六进制"}`。不接受服务名、URL、命令、文件路径或降级参数；重启仅作用于持久化prepared候选。
 - 根权限 helper 仅监听 `/run/xshop-preview-upgrader/control.sock`（root:dujiao，0660）。SO_PEERCRED 必须同时匹配 `dujiao` UID 和精确 cgroup `/system.slice/dujiao-preview.service`；同 UID 的生产服务不能调用。
 - 运行二进制校验固定 preview unit/PID/cgroup、dujiao UID/GID/starttime；通过固定 Python 短命子进程切换到 dujiao（无附加组、零活跃 capability、no_new_privs）只读打开固定 `/proc/PID/exe`，再复核身份和健康。helper 增加 SETUID/SETGID，不授予 SYS_PTRACE；这些 capability 本身不限制可切换的账户，固定范围由审核代码保证，不能宣称恶意 root helper 被 OS 完全隔离。
 - helper 使用 root 已有 gh 凭据读取固定私有仓库；凭据不进入源码、应用、前端、升级包或响应。无需给应用开放外网，也无需新增更宽权限。现有 gh 账户凭据范围较宽，应在运维条件允许时改用仅此仓库只读下载凭据；本候选未创建/扩权任何令牌。
@@ -14,7 +14,9 @@
 - manifest 使用 Ed25519 对精确 JSON 字节签名。根权限策略文件固定公钥、schema 指纹、preview/embedded-preview/linux/amd64/updater=1。Product 严格为 `XSHOP`。从 A 的确切二进制 SHA-256 到 B、sequence 1→2；源码和二进制包分别校验尺寸和 SHA-256。
 - 本地额外限额：manifest 1MiB，signature 64 bytes，压缩包128MiB，源码64MiB，程序256MiB；单 gzip 流、单 USTAR 正常文件 `dujiao-next`、0755、精确 padding 和两个结束块，无 PAX/GNU/额外成员/尾随数据/链接。
 - 每个私有下载子进程有超时和 stdout 限额；操作总超时10分钟。应用仅提交任务，helper 异步工作，应用重启不终止升级。
-- 状态目录0700，journal0600，全局 flock 和进程内互斥。先保留旧程序并独立持久记录 `recovery.json`（sequence fence + old/new hash），再停测试服务、确认 PID/cgroup 清空、备份配置及 SQLite、同文件系统原子替换、启动并校验运行二进制哈希和 JSON `/health`。`state.json` 终态及父目录同步完成后才移除恢复 fence；任何持久化未知均失败关闭，新实例需重新核验实际磁盘/运行身份及目录同步后才能确认终态。失败/重启恢复仅切回已校验旧程序，不倒灌数据库，不覆盖上传文件。启动恢复失败退出78，unit 禁止对此自动重启，避免反复 stop/start preview。
+- 状态目录0700，journal0600，全局 flock 和进程内互斥。`install` 先验证源码、签名、兼容性及程序，保留旧程序及配置/SQLite在线一致性备份，独立持久记录 `recovery.json`（sequence fence + old/new hash），在目标目录内原子替换二进制，但**不停止、不重启旧进程**；成功状态为 `prepared`、`need_restart:true`。仅空正文 `POST .../restart` 停止固定preview、确认writers清空、启动候选，校验实际运行哈希及JSON `/health`，最后置 `installed`。install/restart返回HTTP202及既有JSON成功envelope。helper重启保留prepared而不自动启动候选。中间失败保留checkpoint、pending fence和已消费sequence；失败恢复仅切回旧程序，不倒灌数据库。终态持久化和目录同步后才移除fence，未知持久性失败关闭；启动恢复失败退出78防止自动反复stop/start。`AmbientCapabilities=CAP_SETUID`为完整systemd sandbox下保持SETUID；固定非root worker显式清空effective/permitted/inheritable/ambient并校验零cap、零附加组。worker/权限永久错误即时返回，不等待45秒。
+- 状态DTO保留目标 `version/sequence/digest`，新增 `need_restart`（总是返回）、可选 `phase/current_version`；不能可靠确认当前版本时省略current_version，绝不猜测。Source/GitHub凭据继续仅在helper。
+<!-- historical single-phase design superseded -->
 - 失败 sequence 也被消费，不能重复安装。恢复失败会保持 pending 并拒绝继续更新，必须人工处理。只有 root 明确运行 `--initialize` 可以首次创建 sequence=1；常规启动缺失 journal 时失败关闭，不能自动重置防回退状态。
 
 ## 不变的旧安全合同

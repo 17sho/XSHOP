@@ -23,6 +23,9 @@ type Controller interface {
 	Healthy(context.Context, string) error
 }
 type State struct {
+	Version   string `json:"version,omitempty"`
+	Digest    string `json:"digest,omitempty"`
+	Prepared  bool   `json:"prepared,omitempty"`
 	HighWater uint64 `json:"high_water"`
 	Pending   bool   `json:"pending"`
 	Rollback  string `json:"rollback,omitempty"`
@@ -208,6 +211,10 @@ func (e *Engine) readState() (State, error) {
 		}
 		intent.Pending = true
 		intent.Result = "recovery_required"
+		// Prepared is acknowledged only when both durable journals agree.
+		if s.Prepared && intent.Prepared && s.HighWater == intent.HighWater && s.NewHash == intent.NewHash && s.Result == "prepared" {
+			intent.Result = "prepared"
+		}
 		return intent, nil
 	}
 	if !errors.Is(fenceErr, os.ErrNotExist) {
@@ -306,6 +313,19 @@ func (e *Engine) Recover(ctx context.Context) error {
 	s, err := e.readState()
 	if err != nil {
 		return err
+	}
+	if s.Pending && s.Result == "prepared" {
+		hash, err := FileHash(e.Target)
+		if err != nil || hash != s.NewHash {
+			return errors.New("prepared binary identity mismatch")
+		}
+		if err := e.boundary("state.json", "recover_sync"); err != nil {
+			return e.failClosed(err)
+		}
+		if err := syncDir(e.StateDir); err != nil {
+			return e.failClosed(err)
+		}
+		return nil // Explicit restart remains required after helper restart.
 	}
 	if !s.Pending {
 		var expected string

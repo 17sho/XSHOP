@@ -45,12 +45,15 @@ type Source interface {
 	Asset(context.Context, string, string, uint64) ([]byte, error)
 }
 type Status struct {
-	State      string `json:"state"`
-	Version    string `json:"version,omitempty"`
-	Sequence   uint64 `json:"sequence,omitempty"`
-	Digest     string `json:"digest,omitempty"`
-	Message    string `json:"message,omitempty"`
-	Repository string `json:"repository"`
+	NeedRestart    bool   `json:"need_restart"`
+	Phase          string `json:"phase,omitempty"`
+	CurrentVersion string `json:"current_version,omitempty"`
+	State          string `json:"state"`
+	Version        string `json:"version,omitempty"`
+	Sequence       uint64 `json:"sequence,omitempty"`
+	Digest         string `json:"digest,omitempty"`
+	Message        string `json:"message,omitempty"`
+	Repository     string `json:"repository"`
 }
 type Helper struct {
 	Engine    *Engine
@@ -106,6 +109,16 @@ func (h *Helper) verify(ctx context.Context, tag string) (*customupgrade.Verifie
 func (h *Helper) finish(s Status) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if s.Phase == "" {
+		if s.State == "failed" {
+			s.Phase = h.status.Phase
+			if s.Phase == "" {
+				s.Phase = h.status.State
+			}
+		} else {
+			s.Phase = s.State
+		}
+	}
 	s.Repository = Repository
 	h.status = s
 	h.busy = false
@@ -189,12 +202,12 @@ func (h *Helper) install(ctx context.Context, tag, digest string) {
 		h.finish(Status{State: "failed", Message: "安装基线不兼容"})
 		return
 	}
-	err = h.Engine.Activate(ctx, staged.BinaryPath, old, staged.BinarySHA256, m.Sequence)
+	err = h.Engine.Prepare(ctx, staged.BinaryPath, old, staged.BinarySHA256, m.Sequence, m.Version, digest)
 	if err != nil {
 		h.finish(Status{State: "failed", Message: h.activationFailureMessage()})
 		return
 	}
-	h.finish(Status{State: "installed", Version: m.Version, Sequence: m.Sequence, Message: "升级完成，配置、数据库和上传文件保留"})
+	h.finish(Status{State: "prepared", NeedRestart: true, Phase: "prepared", Version: m.Version, Sequence: m.Sequence, Digest: digest, Message: "更新已准备；旧程序继续服务，请显式重启完成升级"})
 }
 func (h *Helper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
@@ -211,7 +224,7 @@ func (h *Helper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Cached availability is not authority when durable state cannot be read.
 		if h.Engine != nil {
 			journal, err := h.Engine.ReadState()
-			if err != nil || (journal.Pending && !busy) {
+			if err != nil || (journal.Pending && journal.Result != "prepared" && !busy) {
 				s = Status{State: "failed", Message: "升级状态不可用，需要服务器管理员恢复；请勿继续升级"}
 			}
 		}
@@ -232,11 +245,16 @@ func (h *Helper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+		if h.Engine != nil && !busy {
+			if journal, err := h.Engine.ReadState(); err == nil && journal.Result == "prepared" {
+				s = Status{State: "prepared", NeedRestart: true, Phase: "prepared", Version: journal.Version, Sequence: journal.HighWater, Digest: journal.Digest}
+			}
+		}
 		s.Repository = Repository
 		json.NewEncoder(w).Encode(s)
 		return
 	}
-	if r.Method != "POST" || (r.URL.Path != "/check" && r.URL.Path != "/install") {
+	if r.Method != "POST" || (r.URL.Path != "/check" && r.URL.Path != "/install" && r.URL.Path != "/restart") {
 		http.Error(w, "not found", 404)
 		return
 	}
@@ -246,7 +264,7 @@ func (h *Helper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	digest := ""
-	if r.URL.Path == "/check" {
+	if r.URL.Path == "/check" || r.URL.Path == "/restart" {
 		if len(body) != 0 {
 			http.Error(w, "empty body required", 400)
 			return
@@ -277,11 +295,27 @@ func (h *Helper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "check first", 409)
 		return
 	}
+	if r.URL.Path == "/restart" {
+		if h.Engine == nil {
+			h.mu.Unlock()
+			http.Error(w, "not prepared", 409)
+			return
+		}
+		s, err := h.Engine.ReadState()
+		if err != nil || s.Result != "prepared" {
+			h.mu.Unlock()
+			http.Error(w, "not prepared", 409)
+			return
+		}
+	}
 	h.busy = true
 	tag := h.tag
 	h.status = Status{State: "checking", Repository: Repository}
 	if digest != "" {
 		h.status.State = "installing"
+	}
+	if r.URL.Path == "/restart" {
+		h.status = Status{State: "restarting", Phase: "restarting", Repository: Repository}
 	}
 	h.mu.Unlock()
 	w.WriteHeader(202)
@@ -289,7 +323,14 @@ func (h *Helper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		defer cancel()
-		if digest == "" {
+		if r.URL.Path == "/restart" {
+			s, _ := h.Engine.ReadState()
+			if err := h.Engine.Restart(ctx); err != nil {
+				h.finish(Status{State: "failed", Phase: "restart", Message: h.activationFailureMessage()})
+			} else {
+				h.finish(Status{State: "installed", Version: s.Version, Sequence: s.HighWater, Digest: s.Digest, Message: "升级完成；数据库未回退"})
+			}
+		} else if digest == "" {
 			h.check(ctx)
 		} else {
 			h.install(ctx, tag, digest)

@@ -188,6 +188,13 @@ if libc.prctl(38,1,0,0,0)!=0: raise RuntimeError('no_new_privs failed')
 i=json.loads(sys.stdin.read(4096))
 if set(i)!={'pid','uid','gid','start'} or type(i['pid']) is not int or i['pid']<=1: raise RuntimeError('identity rejected')
 if os.getresuid()!=(i['uid'],)*3 or os.getresgid()!=(i['gid'],)*3 or os.getgroups(): raise RuntimeError('worker credentials rejected')
+# UID transition clears effective/permitted/ambient, but not inheritable.
+# Drop all sets explicitly; failure is fatal, never relax the zero-cap check.
+class Header(ctypes.Structure): _fields_=[('version',ctypes.c_uint32),('pid',ctypes.c_int)]
+class Data(ctypes.Structure): _fields_=[('effective',ctypes.c_uint32),('permitted',ctypes.c_uint32),('inheritable',ctypes.c_uint32)]
+hdr=Header(0x20080522,0); caps=(Data*2)()
+if libc.capset(ctypes.byref(hdr),ctypes.byref(caps))!=0: raise RuntimeError('capability clear failed')
+if libc.prctl(47,4,0,0,0)!=0: raise RuntimeError('ambient clear failed')
 s=dict(line.split(':',1) for line in open('/proc/self/status') if ':' in line)
 if any(int(s[k].strip(),16) for k in ('CapEff','CapPrm','CapInh','CapAmb')) or s['NoNewPrivs'].strip()!='1': raise RuntimeError('worker privileges rejected')
 d=os.open('/proc/'+str(i['pid']),os.O_RDONLY|os.O_DIRECTORY|os.O_CLOEXEC)
@@ -212,6 +219,12 @@ os.close(d)
 print(h)
 `
 
+var errHashWorker = errors.New("fixed hash worker failed")
+
+func permanentHashError(err error) bool {
+	return errors.Is(err, syscall.EPERM) || errors.Is(err, syscall.EACCES) || errors.Is(err, errHashWorker)
+}
+
 func hashPreviewIdentity(ctx context.Context, identity previewIdentity) (string, error) {
 	uid, gid, credentialErr := previewCredentials()
 	start, startErr := strconv.ParseUint(identity.Start, 10, 64)
@@ -230,7 +243,7 @@ func hashPreviewIdentity(ctx context.Context, identity previewIdentity) (string,
 	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: identity.UID, Gid: identity.GID, Groups: []uint32{}}}
 	raw, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("preview hash worker failed: %w", err)
+		return "", errors.Join(errHashWorker, fmt.Errorf("preview hash worker failed: %w", err))
 	}
 	hash := strings.TrimSpace(string(raw))
 	if !digestPattern.MatchString(hash) {
@@ -273,6 +286,9 @@ func (s Systemd) Healthy(ctx context.Context, expected string) error {
 	client := &http.Client{Timeout: 2 * time.Second}
 	for {
 		hash, identity, err := runningPreviewHash(ctx)
+		if permanentHashError(err) {
+			return errors.New("running identity verification unavailable; helper permissions or worker failed")
+		}
 		if err == nil && hash == expected {
 			req, _ := http.NewRequestWithContext(ctx, "GET", s.HealthURL, nil)
 			resp, err := client.Do(req)
