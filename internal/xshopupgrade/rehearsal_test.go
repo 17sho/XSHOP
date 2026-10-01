@@ -22,9 +22,22 @@ import (
 
 type localSource struct{ dir string }
 
-func (s localSource) Latest(context.Context) (string, error) { return "xshop-preview-b1", nil }
+func (s localSource) Latest(context.Context) (string, error) {
+	raw, err := os.ReadFile(filepath.Join(s.dir, "manifest.json"))
+	if err != nil {
+		return "", err
+	}
+	var m struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(raw, &m); err != nil || !ValidTag(m.Version) {
+		return "", errors.New("local source identity")
+	}
+	return m.Version, nil
+}
 func (s localSource) Asset(_ context.Context, tag, name string, max uint64) ([]byte, error) {
-	if tag != "xshop-preview-b1" || !ValidAsset(name) {
+	latest, err := s.Latest(context.Background())
+	if err != nil || tag != latest || !ValidAsset(name) {
 		return nil, errors.New("local source identity")
 	}
 	raw, err := os.ReadFile(filepath.Join(s.dir, name))
@@ -137,6 +150,17 @@ func TestActualCandidateChain(t *testing.T) {
 	}
 	aHash, _ := FileHash(target)
 	bHash, _ := FileHash(filepath.Join(artifacts, "B", "dujiao-next"))
+	manifestRaw, err := os.ReadFile(filepath.Join(artifacts, "B", "manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var release struct {
+		Version  string `json:"version"`
+		Sequence uint64 `json:"sequence"`
+	}
+	if json.Unmarshal(manifestRaw, &release) != nil || release.Sequence < 2 {
+		t.Fatal("invalid rehearsal manifest")
+	}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -175,7 +199,7 @@ func TestActualCandidateChain(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Real JWT middleware must reject anonymous requests to all registered actions.
-	for _, x := range []struct{ m, p string }{{"GET", "status"}, {"POST", "check"}, {"POST", "install"}} {
+	for _, x := range []struct{ m, p string }{{"GET", "status"}, {"POST", "check"}, {"POST", "install"}, {"POST", "restart"}} {
 		req, _ := http.NewRequest(x.m, ctl.url+"/api/v1/admin/xshop-upgrade/"+x.p, nil)
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
@@ -245,7 +269,7 @@ func TestActualCandidateChain(t *testing.T) {
 		cmd := exec.CommandContext(ctx, "/usr/bin/python3", "-c", `import sqlite3,sys;s=sqlite3.connect(sys.argv[1]);d=sqlite3.connect(sys.argv[2]);s.backup(d);d.close();s.close()`, db, filepath.Join(dir, "database.sqlite3"))
 		return cmd.Run()
 	}}
-	if err = engine.Initialize(1); err != nil {
+	if err = engine.Initialize(release.Sequence - 1); err != nil {
 		t.Fatal(err)
 	}
 	h := &Helper{Engine: engine, Source: localSource{filepath.Join(artifacts, "B")}, PublicKey: key, Schema: strings.TrimSpace(string(schema))}
@@ -285,7 +309,18 @@ func TestActualCandidateChain(t *testing.T) {
 	call("check", "")
 	s := wait("available")
 	payload, _ := json.Marshal(map[string]string{"digest": s.Digest})
+	oldPID := ctl.cmd.Process.Pid
+	oldStarts := ctl.starts
 	call("install", string(payload))
+	prepared := wait("prepared")
+	actualStillA, err := FileHash("/proc/" + stringPID(ctl.cmd.Process.Pid) + "/exe")
+	if err != nil || actualStillA != aHash || ctl.cmd.Process.Pid != oldPID || ctl.starts != oldStarts || !prepared.NeedRestart {
+		t.Fatal("preparation restarted the serving process or did not request explicit restart")
+	}
+	if err = ctl.Healthy(ctx, aHash); err != nil {
+		t.Fatal("old A stopped serving during preparation", err)
+	}
+	call("restart", "")
 	wait("installed")
 	if ctl.runningHash != bHash {
 		t.Fatal("B is not running")
@@ -301,7 +336,7 @@ func TestActualCandidateChain(t *testing.T) {
 	}
 	json.NewDecoder(versionResp.Body).Decode(&versionEnvelope)
 	versionResp.Body.Close()
-	if versionEnvelope.Data.Version != "xshop-preview-b1" {
+	if versionEnvelope.Data.Version != release.Version {
 		t.Fatal("B version endpoint mismatch")
 	}
 	after := python(t, "-c", dbDigest, db)
@@ -323,7 +358,7 @@ func TestActualCandidateChain(t *testing.T) {
 	state2 := filepath.Join(root, "failure-state")
 	os.Mkdir(state2, 0700)
 	engine.StateDir = state2
-	if err = engine.Initialize(1); err != nil {
+	if err = engine.Initialize(release.Sequence - 1); err != nil {
 		t.Fatal(err)
 	}
 	ctl.Start(ctx)
@@ -335,12 +370,14 @@ func TestActualCandidateChain(t *testing.T) {
 	s = wait("available")
 	payload, _ = json.Marshal(map[string]string{"digest": s.Digest})
 	call("install", string(payload))
+	wait("prepared")
+	call("restart", "")
 	wait("failed")
 	if ctl.runningHash != aHash {
 		t.Fatal("A rollback not running")
 	}
 	state, _ := engine.ReadState()
-	if state.Pending || state.HighWater != 2 {
+	if state.Pending || state.HighWater != release.Sequence {
 		t.Fatal("rollback replay fence wrong")
 	}
 	after = python(t, "-c", dbDigest, db)

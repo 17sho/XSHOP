@@ -209,16 +209,28 @@ func (e *Engine) readState() (State, error) {
 		if intent.HighWater < s.HighWater {
 			return s, errors.New("stale recovery fence")
 		}
-		intent.Pending = true
-		intent.Result = "recovery_required"
-		// Prepared is acknowledged only when both durable journals agree.
-		if s.Prepared && intent.Prepared && s.HighWater == intent.HighWater && s.NewHash == intent.NewHash && s.Result == "prepared" {
+		// The state label is the acknowledgement boundary. An interrupted
+		// preparing/restarting write still uses the conservative recovery fence.
+		if s.Result == "prepared" {
+			if !s.Prepared || !intent.Prepared || !s.Pending || !intent.Pending ||
+				s.HighWater != intent.HighWater || s.Version != intent.Version ||
+				s.Digest != intent.Digest || s.Rollback != intent.Rollback ||
+				s.OldHash != intent.OldHash || s.NewHash != intent.NewHash ||
+				s.NewHash == "" || intent.Result != "recovery_required" {
+				return s, errors.New("inconsistent prepared journals")
+			}
 			intent.Result = "prepared"
+		} else {
+			intent.Result = "recovery_required"
 		}
+		intent.Pending = true
 		return intent, nil
 	}
 	if !errors.Is(fenceErr, os.ErrNotExist) {
 		return s, fenceErr
+	}
+	if s.Prepared || s.Result == "prepared" {
+		return s, errors.New("prepared recovery fence missing")
 	}
 	// Legacy installed journals do not contain the installed identity. Recover
 	// them conservatively via the retained old binary, never trust the label.

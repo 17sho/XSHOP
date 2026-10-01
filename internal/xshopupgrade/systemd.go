@@ -197,25 +197,29 @@ if libc.capset(ctypes.byref(hdr),ctypes.byref(caps))!=0: raise RuntimeError('cap
 if libc.prctl(47,4,0,0,0)!=0: raise RuntimeError('ambient clear failed')
 s=dict(line.split(':',1) for line in open('/proc/self/status') if ':' in line)
 if any(int(s[k].strip(),16) for k in ('CapEff','CapPrm','CapInh','CapAmb')) or s['NoNewPrivs'].strip()!='1': raise RuntimeError('worker privileges rejected')
-d=os.open('/proc/'+str(i['pid']),os.O_RDONLY|os.O_DIRECTORY|os.O_CLOEXEC)
-def read(name):
- f=os.open(name,os.O_RDONLY|os.O_CLOEXEC,dir_fd=d)
- with os.fdopen(f,'rb') as r: return r.read(65536)
-def check():
- if read('cgroup')!=b'0::/system.slice/dujiao-preview.service\n': raise RuntimeError('cgroup rejected')
- s=dict(line.split(':',1) for line in read('status').decode().splitlines() if ':' in line)
- if s['Uid'].split()!=[str(i['uid'])]*4 or s['Gid'].split()!=[str(i['gid'])]*4: raise RuntimeError('target credentials rejected')
- if read('stat').decode().rsplit(')',1)[1].split()[19]!=i['start']: raise RuntimeError('PID replaced')
-check()
-f=os.open('exe',os.O_RDONLY|os.O_CLOEXEC,dir_fd=d)
-with os.fdopen(f,'rb') as r:
- before=os.fstat(r.fileno())
- h=hashlib.file_digest(r,'sha256').hexdigest()
- after=os.fstat(r.fileno())
- current=os.stat('exe',dir_fd=d)
- if (before.st_dev,before.st_ino,before.st_size,before.st_mtime_ns,before.st_ctime_ns)!=(after.st_dev,after.st_ino,after.st_size,after.st_mtime_ns,after.st_ctime_ns) or (after.st_dev,after.st_ino)!=(current.st_dev,current.st_ino): raise RuntimeError('executable changed')
-check()
-os.close(d)
+class TargetChanged(Exception): pass
+try:
+ d=os.open('/proc/'+str(i['pid']),os.O_RDONLY|os.O_DIRECTORY|os.O_CLOEXEC)
+ def read(name):
+  f=os.open(name,os.O_RDONLY|os.O_CLOEXEC,dir_fd=d)
+  with os.fdopen(f,'rb') as r: return r.read(65536)
+ def check():
+  if read('cgroup')!=b'0::/system.slice/dujiao-preview.service\n': raise RuntimeError('cgroup rejected')
+  s=dict(line.split(':',1) for line in read('status').decode().splitlines() if ':' in line)
+  if s['Uid'].split()!=[str(i['uid'])]*4 or s['Gid'].split()!=[str(i['gid'])]*4: raise RuntimeError('target credentials rejected')
+  if read('stat').decode().rsplit(')',1)[1].split()[19]!=i['start']: raise TargetChanged('PID replaced')
+ check()
+ f=os.open('exe',os.O_RDONLY|os.O_CLOEXEC,dir_fd=d)
+ with os.fdopen(f,'rb') as r:
+  before=os.fstat(r.fileno())
+  h=hashlib.file_digest(r,'sha256').hexdigest()
+  after=os.fstat(r.fileno())
+  current=os.stat('exe',dir_fd=d)
+  if (before.st_dev,before.st_ino,before.st_size,before.st_mtime_ns,before.st_ctime_ns)!=(after.st_dev,after.st_ino,after.st_size,after.st_mtime_ns,after.st_ctime_ns) or (after.st_dev,after.st_ino)!=(current.st_dev,current.st_ino): raise TargetChanged('executable changed')
+ check()
+ os.close(d)
+except (FileNotFoundError,ProcessLookupError,TargetChanged):
+ sys.exit(75) # Reserved target-race status; all privilege failures stay fatal.
 print(h)
 `
 
@@ -243,6 +247,10 @@ func hashPreviewIdentity(ctx context.Context, identity previewIdentity) (string,
 	cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{Uid: identity.UID, Gid: identity.GID, Groups: []uint32{}}}
 	raw, err := cmd.Output()
 	if err != nil {
+		var exit *exec.ExitError
+		if errors.As(err, &exit) && exit.ExitCode() == 75 {
+			return "", fmt.Errorf("preview target disappeared or changed: %w", err)
+		}
 		return "", errors.Join(errHashWorker, fmt.Errorf("preview hash worker failed: %w", err))
 	}
 	hash := strings.TrimSpace(string(raw))
