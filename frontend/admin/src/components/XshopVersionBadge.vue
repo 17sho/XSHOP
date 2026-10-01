@@ -126,7 +126,7 @@ onBeforeUnmount(() => { disposed = true; generation++; window.removeEventListene
       <p class="upgrade-step" :key="status.phase || status.state" role="status" aria-live="polite">状态：{{ awaitingRestart && activation?.kind === 'restart' && status.state === 'rolled_back' && status.current_version && status.rollback_available === false ? '旧程序已恢复；目标版本未确认' : awaitingRestart && status.state !== 'failed' ? '等待服务恢复与运行核验' : labels[status.state] || '等待状态确认' }}</p>
       <div v-if="busy || active || awaitingRestart || feedback" role="progressbar" aria-label="操作进行中，等待核验" class="upgrade-progress"><span /></div>
       <p v-if="feedback" role="status">{{ needRestart ? '下载与验证已完成，准备结果已确认' : '正在下载并验证；等待实际结果' }}</p>
-      <p v-if="status.phase">阶段：{{ ({ downloading: '下载中', verifying: '签名与哈希验证中', preparing: '准备程序中', prepared: '准备完成', restarting: '重启并核验中', installed: '运行与健康确认完成' } as Record<string, string>)[status.phase] || '等待状态确认' }}</p>
+      <p v-if="status.phase">阶段：{{ ({ downloading: '下载中', verifying: '签名与哈希验证中', preparing: '准备程序中', prepared: '准备完成', restarting: '重启并核验中', installed: '运行与健康确认完成', up_to_date: '检查完成，已是最新版本' } as Record<string, string>)[status.phase] || '等待状态确认' }}</p>
       <p v-if="status.message" :role="status.state === 'failed' ? 'alert' : undefined">{{ status.message }}</p>
       <p v-if="needRestart" class="rounded-lg border border-green-200 bg-green-50 p-3 text-green-700">✓ 下载并应用完成，需要重启。旧进程仍在提供服务。</p>
       <p v-if="error" role="alert" class="text-destructive">{{ error }}</p>

@@ -13,6 +13,10 @@ async function mount() { el = document.createElement('div'); document.body.appen
 function button(text: string) { if (text === '版本') return el.querySelector<HTMLButtonElement>('[aria-label="版本与在线升级"]')!; return [...el.querySelectorAll('button')].find(b => b.textContent?.includes(text))! }
 beforeEach(() => { vi.useFakeTimers(); localStorage.clear(); pinia = createPinia(); setActivePinia(pinia); mocks.auth = useAdminAuthStore(); mocks.auth.token = 'synthetic-A'; mocks.auth.isSuper = true; mocks.get.mockResolvedValue(envelope({ state: 'available', version: 'v2', digest: 'digest' })); mocks.post.mockResolvedValue(envelope({})); vi.spyOn(window, 'confirm').mockReturnValue(true) })
 afterEach(() => { app?.unmount(); el?.remove(); vi.restoreAllMocks(); vi.clearAllMocks(); vi.useRealTimers() })
+it('renders an up-to-date phase as completed without suggesting pending confirmation', async () => {
+ mocks.get.mockResolvedValue(envelope({ state: 'up_to_date', phase: 'up_to_date', current_version: 'xshop-preview-b3', version: 'xshop-preview-b3', sequence: 6, rollback_available: true, previous_version: 'xshop-preview-a3' })); await mount(); button('版本').click(); await flush();
+ expect(el.textContent).toContain('状态：已是最新版本'); expect(el.textContent).toContain('阶段：检查完成，已是最新版本'); expect(el.textContent).not.toContain('等待状态确认'); expect(el.querySelector('[role="progressbar"]')).toBeNull(); expect(button('下载并应用').disabled).toBe(true); expect(button('回退程序').disabled).toBe(false); expect(mocks.post).not.toHaveBeenCalled()
+})
 it('uses a compact icon without version text in the header', async () => {
   await mount(); const trigger = el.querySelector<HTMLButtonElement>('[aria-label="版本与在线升级"]')!;
   expect(trigger.textContent?.trim()).toBe(''); expect(trigger.getAttribute('title')).toBe('版本与在线升级'); expect(trigger.querySelector('svg')).not.toBeNull()
