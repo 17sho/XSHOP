@@ -12,7 +12,7 @@ let timer: ReturnType<typeof setInterval> | undefined
 let disposed = false
 async function refresh() {
   if (!authStore.isSuper || disposed) return
-  try { const result = await api.get('/admin/xshop-upgrade/status'); if (!disposed) status.value = result.data.data as UpgradeStatus }
+  try { const result = await api.get('/admin/xshop-upgrade/status'); if (!disposed) { status.value = result.data.data as UpgradeStatus; error.value = '' } }
   catch { if (!disposed) error.value = '升级服务尚未就绪，或服务正在重启；请稍后刷新。' }
 }
 async function check() {
