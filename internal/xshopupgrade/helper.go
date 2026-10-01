@@ -127,6 +127,14 @@ func (h *Helper) check(ctx context.Context) {
 	h.mu.Unlock()
 	h.finish(Status{State: "available", Version: m.Version, Sequence: m.Sequence, Digest: v.Digest(), Message: "已验证 XSHOP 自定义更新；数据库结构不变"})
 }
+func (h *Helper) activationFailureMessage() string {
+	state, err := h.Engine.ReadState()
+	if err == nil && !state.Pending && state.Result == "rolled_back" {
+		return "安装失败，旧版本已恢复"
+	}
+	return "安装或恢复失败，需要服务器管理员处理；请勿继续升级"
+}
+
 func (h *Helper) install(ctx context.Context, tag, digest string) {
 	v, err := h.verify(ctx, tag)
 	if err != nil || v.Digest() != digest {
@@ -183,12 +191,7 @@ func (h *Helper) install(ctx context.Context, tag, digest string) {
 	}
 	err = h.Engine.Activate(ctx, staged.BinaryPath, old, staged.BinarySHA256, m.Sequence)
 	if err != nil {
-		state, stateErr := h.Engine.ReadState()
-		message := "安装失败，旧版本已恢复"
-		if stateErr != nil || state.Pending {
-			message = "安装或恢复失败，需要服务器管理员处理；请勿继续升级"
-		}
-		h.finish(Status{State: "failed", Message: message})
+		h.finish(Status{State: "failed", Message: h.activationFailureMessage()})
 		return
 	}
 	h.finish(Status{State: "installed", Version: m.Version, Sequence: m.Sequence, Message: "升级完成，配置、数据库和上传文件保留"})
@@ -203,7 +206,15 @@ func (h *Helper) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" && r.URL.Path == "/status" {
 		h.mu.Lock()
 		s := h.status
+		busy := h.busy
 		h.mu.Unlock()
+		// Cached availability is not authority when durable state cannot be read.
+		if h.Engine != nil {
+			journal, err := h.Engine.ReadState()
+			if err != nil || (journal.Pending && !busy) {
+				s = Status{State: "failed", Message: "升级状态不可用，需要服务器管理员恢复；请勿继续升级"}
+			}
+		}
 		if s.State == "" {
 			s.State = "idle"
 			if h.Engine != nil {

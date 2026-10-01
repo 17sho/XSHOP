@@ -45,6 +45,18 @@ func bootstrap(engine *xshopupgrade.Engine, args []string) (bool, error) {
 	_, err := engine.ReadState()
 	return false, err
 }
+
+// A failed recovery must not cause systemd to repeatedly stop preview writers.
+// Exit 78 is paired with RestartPreventExitStatus in the reviewed unit.
+var errRecoveryBlocked = errors.New("manual recovery required")
+
+func exitCode(err error) int {
+	if errors.Is(err, errRecoveryBlocked) {
+		return 78
+	}
+	return 1
+}
+
 func run() error {
 	if os.Geteuid() != 0 {
 		return errors.New("root helper required")
@@ -95,7 +107,7 @@ func run() error {
 	ctx, cancel := context.WithTimeout(context.Background(), xshopupgrade.RecoveryTimeout)
 	defer cancel()
 	if err = engine.Recover(ctx); err != nil {
-		return err
+		return errors.Join(errRecoveryBlocked, err)
 	}
 	account, err := user.Lookup("dujiao")
 	if err != nil {
@@ -150,6 +162,6 @@ func run() error {
 func main() {
 	if err := run(); err != nil {
 		fmt.Fprintln(os.Stderr, "XSHOP preview helper stopped:", err)
-		os.Exit(1)
+		os.Exit(exitCode(err))
 	}
 }

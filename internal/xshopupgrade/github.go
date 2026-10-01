@@ -15,8 +15,18 @@ import (
 // copied into packages, accepted from callers, or returned to the application.
 type GitHub struct{}
 
+func githubCommand(ctx context.Context, args ...string) *exec.Cmd {
+	// All callers are fixed internal GitHub API operations. Use only the existing
+	// root backend, never inherited caller host/config/token or interactive tools.
+	pinned := []string{"api", "--hostname", "github.com"}
+	pinned = append(pinned, args[1:]...)
+	cmd := exec.CommandContext(ctx, "/usr/bin/gh", pinned...)
+	cmd.Env = []string{"HOME=/root", "PATH=/usr/bin:/bin", "GH_HOST=github.com", "GH_CONFIG_DIR=/root/.config/gh", "GH_PROMPT_DISABLED=1", "GH_PAGER=cat", "GIT_TERMINAL_PROMPT=0", "LANG=C.UTF-8"}
+	return cmd
+}
+
 func boundedCommand(ctx context.Context, max uint64, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, "/usr/bin/gh", args...)
+	cmd := githubCommand(ctx, args...)
 	out, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, err

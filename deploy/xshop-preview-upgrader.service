@@ -18,6 +18,8 @@ StateDirectory=xshop-preview-upgrader
 StateDirectoryMode=0700
 UMask=0077
 Restart=on-failure
+# Parent helper exits 78 on uncertain startup recovery; never auto-replay it.
+RestartPreventExitStatus=78
 RestartSec=5
 TimeoutStopSec=120
 KillMode=control-group
@@ -34,7 +36,9 @@ LockPersonality=yes
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 ReadWritePaths=/opt/dujiao-preview /var/lib/xshop-preview-upgrader /run/xshop-preview-upgrader
 ReadOnlyPaths=/opt/dujiao-next
-CapabilityBoundingSet=CAP_DAC_OVERRIDE CAP_CHOWN
+# SETUID/SETGID are needed to launch the fixed, group-free non-root hash worker.
+# Do not add SYS_PTRACE: the worker reads only the fixed preview process.
+CapabilityBoundingSet=CAP_DAC_OVERRIDE CAP_CHOWN CAP_SETUID CAP_SETGID
 MemoryMax=768M
 TasksMax=64
 
