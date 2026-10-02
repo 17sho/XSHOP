@@ -4,7 +4,8 @@
     <div class="container mx-auto px-4 flex items-center justify-between gap-4">
       <!-- Logo -->
       <router-link to="/" class="theme-wordmark group relative gap-3" :title="brandSiteName">
-        <svg class="h-8 w-8 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="XSHOP"><rect width="64" height="64" rx="14" fill="#111827"/><path d="M18 18L46 46M46 18L18 46" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/></svg>
+        <img v-if="brandSiteLogo" :src="brandSiteLogo" :alt="brandSiteName" class="h-8 w-8 shrink-0 object-contain" />
+        <svg v-else class="h-8 w-8 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="XSHOP"><rect width="64" height="64" rx="14" fill="#111827"/><path d="M18 18L46 46M46 18L18 46" stroke="#ffffff" stroke-width="8" stroke-linecap="round"/></svg>
         <span class="theme-wordmark-text">{{ brandSiteName }}</span>
       </router-link>
 
@@ -149,6 +150,11 @@ const currentLocale = computed(() => {
   return lang.code === 'en-US' ? 'EN' : (lang.code === 'zh-CN' ? '简' : '繁')
 })
 
+
+const brandSiteLogo = computed(() => {
+  const value = String(appStore.config?.brand?.site_logo || '').trim()
+  return /^(\/[^/]|https?:\/\/)/i.test(value) ? value : ''
+})
 
 const brandSiteName = computed(() => {
   const text = String(appStore.config?.brand?.site_name || '').trim()
