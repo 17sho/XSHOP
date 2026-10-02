@@ -23,8 +23,8 @@ test('classic catalog switches between native card and list renderers', () => {
   assert.match(classicProducts, /productCatalogLayout === 'list'/)
   assert.match(classicProducts, /groupedListProducts/)
   assert.match(classicProducts, /list-category-heading/)
-  assert.match(classicList, /common\.viewDetails/)
-  assert.doesNotMatch(classicList, /products\.quickBuy/)
+  assert.match(classicList, /products\.quickBuyAria/)
+  assert.match(classicProducts, /@quick-buy="openQuickBuy"/)
   assert.match(classicList, /getFulfillmentTypeLabel/)
 })
 
@@ -40,11 +40,12 @@ test('vault catalog switches between native card and list renderers', () => {
 })
 
 test('list renderers preserve pricing signals without nested interactive controls', () => {
-  for (const source of [classicList, vaultList]) {
-    assert.match(source, /originalPrice/)
-    assert.match(source, /priceSignal/)
-    assert.match(source, /wholesaleTag/)
-  }
+  assert.match(classicList, /hasPromotionPrice/)
+  assert.match(classicList, /hasWholesalePrices/)
+  assert.match(classicList, /hasPromotionRules/)
+  assert.match(vaultList, /originalPrice/)
+  assert.match(vaultList, /priceSignal/)
+  assert.match(vaultList, /wholesaleTag/)
   const nestedInteractiveLink = vaultList.match(/<RouterLink\b[\s\S]*?<\/RouterLink>/)?.[0] ?? ''
   assert.doesNotMatch(nestedInteractiveLink, /<button\b/)
 })
@@ -68,13 +69,13 @@ test('list rows and category selection have visible motion feedback', () => {
 
 test('list rows follow the upstream compact single-row hierarchy', () => {
   assert.match(classicList, /compact-product-row[^\n]*flex-row/)
-  assert.match(classicList, /h-11 w-11[^\n]*sm:h-16 sm:w-16/)
-  assert.match(classicList, /truncate text-xs[^\n]*sm:text-sm/)
-  assert.match(classicList, /h-7 w-7[^\n]*sm:h-8 sm:w-8/)
-  assert.match(classicList, /ArrowRight/)
-  assert.doesNotMatch(classicList, /products\.quickBuyAria/)
-  assert.match(classicList, /class="hidden flex-none sm:block"[^\n]*ChevronRight/)
-  assert.doesNotMatch(classicList, /compact-product-footer|@media \(max-width:767px\)/)
+  assert.match(classicList, /w-11 h-11 sm:w-16 sm:h-16/)
+  assert.match(classicList, /text-xs sm:text-sm font-semibold/)
+  assert.match(classicList, /w-7 h-7 sm:w-8 sm:h-8/)
+  assert.match(classicList, /ShoppingCart/)
+  assert.match(classicList, /products\.quickBuyAria/)
+  assert.match(classicList, /ChevronRight class="hidden sm:block/)
+  assert.doesNotMatch(classicList, /compact-product-footer/)
 
   assert.match(vaultList, /vault-compact-row[^\n]*flex items-center gap-3/)
   assert.match(vaultList, /h-14 w-14[^\n]*sm:h-16 sm:w-16/)

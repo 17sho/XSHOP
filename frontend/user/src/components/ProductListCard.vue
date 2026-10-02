@@ -1,82 +1,147 @@
 <template>
-  <article
-    class="compact-product-row group relative flex flex-row items-center overflow-hidden rounded-xl border bg-card transition-all theme-slide-up"
-    :class="soldOut ? 'border-destructive/30 opacity-85 grayscale-[0.25] saturate-50' : 'hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md'"
-    :style="{ animationDelay: `${index * 20}ms` }"
-  >
-    <button type="button" class="flex min-w-0 flex-1 items-center text-left" @click="$emit('open', product.slug)">
-      <span class="relative m-1.5 h-11 w-11 flex-none overflow-hidden rounded-lg sm:m-2.5 sm:h-16 sm:w-16">
-        <img v-if="image" :src="image" :alt="title" loading="lazy" class="h-full w-full object-cover transition-transform duration-500" :class="soldOut ? 'brightness-75 grayscale' : 'group-hover:scale-110'" />
-        <span v-else class="grid h-full w-full place-items-center bg-muted text-muted-foreground"><Package class="h-5 w-5" /></span>
-        <span v-if="soldOut" class="absolute inset-0 grid place-items-center bg-black/50 px-1 text-center text-[10px] font-bold text-white">{{ t('products.stockStatus.outOfStock') }}</span>
-      </span>
+  <Card
+    class="compact-product-row group relative overflow-hidden flex flex-row items-center rounded-xl transition-all cursor-pointer theme-slide-up"
+    :class="isSoldOut(product)
+      ? 'opacity-85 grayscale-[0.25] saturate-50 border-destructive/30'
+      : 'hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md'"
+    :style="{ animationDelay: `${index * animationStep}ms` }"
+    @click="$emit('click', product.slug)">
 
-      <span class="flex min-w-0 flex-1 flex-col justify-center gap-0.5 py-1.5 pr-0.5 sm:py-2 sm:pr-1">
-        <span class="flex min-w-0 items-center gap-1.5">
-          <span v-if="categoryName" class="hidden max-w-[80px] flex-none truncate text-[11px] uppercase tracking-wider text-muted-foreground sm:inline">{{ categoryName }}</span>
-          <span v-if="categoryName" class="hidden flex-none text-[11px] text-muted-foreground opacity-30 sm:inline">·</span>
-          <span class="truncate text-xs font-semibold text-foreground sm:text-sm">{{ title }}</span>
-        </span>
-        <span class="flex min-w-0 items-center gap-1">
-          <span class="inline-flex min-h-5 items-center rounded-md border border-primary/25 bg-primary/10 px-1.5 text-[10px] font-bold text-primary">{{ deliveryLabel }}</span>
-          <span class="inline-flex min-h-5 items-center rounded-md px-1.5 text-[10px] font-bold" :class="stockBadgeClass">{{ stockLabel }}</span>
-          <span v-if="priceSignal" class="hidden min-h-5 items-center rounded-md bg-secondary px-1.5 text-[10px] font-bold text-primary sm:inline-flex">{{ priceSignal }}</span>
-        </span>
-      </span>
-    </button>
+    <!-- Thumbnail -->
+    <div class="w-11 h-11 sm:w-16 sm:h-16 flex-shrink-0 overflow-hidden relative rounded-lg m-1.5 sm:m-2.5">
+      <img v-if="product.images && getFirstImageUrl(product.images)" :src="getFirstImageUrl(product.images)"
+        :alt="getLocalizedText(product.title)" loading="lazy"
+        class="w-full h-full object-cover transition-transform duration-500"
+        :class="isSoldOut(product) ? 'grayscale brightness-75' : 'group-hover:scale-110'" />
+      <img v-else-if="product.category?.icon" :src="getImageUrl(product.category.icon)"
+        :alt="getLocalizedText(product.category?.name)" loading="lazy"
+        class="w-full h-full object-cover transition-transform duration-500"
+        :class="isSoldOut(product) ? 'grayscale brightness-75' : 'group-hover:scale-110'" />
+      <div v-else class="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
+        <ImageIcon class="w-5 h-5" :stroke-width="1.5" />
+      </div>
+      <!-- Sold out overlay -->
+      <div v-if="isSoldOut(product)" class="absolute inset-0 bg-black/50 flex items-center justify-center">
+        <span class="text-white text-[10px] font-bold">{{ t('products.stockStatus.outOfStock') }}</span>
+      </div>
+    </div>
 
-    <span class="flex flex-none items-center gap-1 pr-1.5 sm:gap-3 sm:pr-4">
-      <button type="button" class="flex flex-col items-end text-right" @click="$emit('open', product.slug)">
-        <span class="whitespace-nowrap text-xs font-bold sm:text-sm" :class="originalPrice ? 'text-destructive' : 'text-foreground'">{{ price }}</span>
-        <span v-if="originalPrice" class="text-[10px] text-muted-foreground line-through">{{ originalPrice }}</span>
-        <span v-else-if="priceSignal" class="text-[9px] font-semibold text-primary sm:hidden">{{ priceSignal }}</span>
-      </button>
-      <button
+    <!-- Info (flex-1) -->
+    <div class="flex-1 min-w-0 py-1.5 sm:py-2 pr-0.5 sm:pr-1 flex flex-col justify-center gap-0.5">
+      <!-- Row 1: Category · Title · Tags -->
+      <div class="flex items-center gap-1.5 min-w-0">
+        <span v-if="product.category?.name" class="hidden sm:inline text-[11px] text-muted-foreground uppercase tracking-wider truncate max-w-[80px] flex-shrink-0">
+          {{ getLocalizedText(product.category.name) }}
+        </span>
+        <span v-if="product.category?.name" class="hidden sm:inline text-[11px] text-muted-foreground opacity-30 flex-shrink-0">·</span>
+        <h3 class="text-xs sm:text-sm font-semibold text-foreground truncate">
+          {{ getLocalizedText(product.title) }}
+        </h3>
+        <span v-for="(tag, tagIndex) in (product.tags || []).slice(0, 1)" :key="tagIndex"
+          class="hidden md:inline-flex items-center rounded-md border border-white/25 bg-black/55 px-1.5 py-0 text-[10px] font-medium text-white backdrop-blur-sm flex-shrink-0">
+          {{ tag }}
+        </span>
+      </div>
+
+      <!-- Row 2: Badges -->
+      <div class="flex flex-wrap items-center gap-1">
+        <!-- Mobile: fulfillment + stock warning -->
+        <Badge class="sm:hidden" size="xs" :variant="product.fulfillment_type === 'auto' ? 'info' : 'neutral'">
+          {{ getFulfillmentTypeLabel(product.fulfillment_type) }}
+        </Badge>
+        <Badge v-if="product.stock_status === 'out_of_stock' || product.stock_status === 'low_stock'"
+          class="sm:hidden" size="xs" :variant="getStockBadgeVariant(product.stock_status)">
+          {{ getStockStatusLabel(product) }}
+        </Badge>
+
+        <!-- Desktop: all badges -->
+        <Badge class="hidden sm:inline-flex" size="xs" :variant="product.purchase_type === 'guest' ? 'warning' : 'success'">
+          {{ getPurchaseTypeLabel(product.purchase_type) }}
+        </Badge>
+        <Badge class="hidden sm:inline-flex" size="xs" :variant="product.fulfillment_type === 'auto' ? 'info' : 'neutral'">
+          {{ getFulfillmentTypeLabel(product.fulfillment_type) }}
+        </Badge>
+        <Badge class="hidden sm:inline-flex" size="xs" :variant="getStockBadgeVariant(product.stock_status)">
+          {{ getStockStatusLabel(product) }}
+        </Badge>
+      </div>
+    </div>
+
+    <!-- Price + Actions (right) -->
+    <div class="flex-shrink-0 flex items-center gap-1 sm:gap-3 pr-1.5 sm:pr-4">
+      <!-- Price -->
+      <div class="text-right">
+        <div v-if="hasPromotionPrice(product)" class="flex flex-col items-end">
+          <span class="text-xs sm:text-sm font-bold text-destructive whitespace-nowrap">
+            {{ formatPrice(getPromotionPriceAmount(product), siteCurrency) }}
+          </span>
+          <div class="flex items-center gap-1">
+            <span class="text-[10px] text-muted-foreground line-through">{{ formatPrice(product.price_amount, siteCurrency) }}</span>
+            <Badge variant="danger" size="xs" class="px-1 py-0 text-[9px] leading-tight">{{ t('products.promotionTag') }}</Badge>
+          </div>
+        </div>
+        <div v-else>
+          <span class="text-xs sm:text-sm font-bold text-foreground whitespace-nowrap">
+            {{ formatPrice(product.price_amount, siteCurrency) }}
+          </span>
+          <div v-if="hasWholesalePrices(product)">
+            <Badge variant="success" size="xs" class="px-1 py-0 text-[9px] leading-tight">{{ t('products.wholesaleTag') }}</Badge>
+          </div>
+          <div v-else-if="hasPromotionRules(product)">
+            <Badge variant="warning" size="xs" class="px-1 py-0 text-[9px] leading-tight">{{ t('products.promotionBadge') }}</Badge>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick buy cart icon -->
+      <Button
         type="button"
-        class="grid h-7 w-7 flex-none place-items-center rounded-md border bg-background text-foreground transition active:scale-90 disabled:cursor-not-allowed disabled:opacity-40 sm:h-8 sm:w-8"
-        :aria-label="t('common.viewDetails')"
-        :disabled="soldOut"
-        @click="$emit('purchase', product.slug)"
-      ><ArrowRight class="h-4 w-4" /></button>
-      <button type="button" class="hidden flex-none sm:block" :aria-label="t('common.viewDetails')" @click="$emit('open', product.slug)"><ChevronRight class="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" /></button>
-    </span>
-  </article>
+        variant="outline"
+        size="icon"
+        class="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0"
+        :aria-label="t('products.quickBuyAria')"
+        :disabled="isSoldOut(product)"
+        @click.stop="$emit('quickBuy', product)"
+      >
+        <ShoppingCart class="h-4 w-4" />
+      </Button>
+
+      <!-- Arrow -->
+      <ChevronRight class="hidden sm:block w-4 h-4 flex-shrink-0 transition-transform text-muted-foreground"
+        :class="isSoldOut(product) ? '' : 'group-hover:translate-x-0.5 group-hover:text-foreground'" />
+    </div>
+  </Card>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { ArrowRight, ChevronRight, Package } from 'lucide-vue-next'
+import { ChevronRight, Image as ImageIcon, ShoppingCart } from 'lucide-vue-next'
 import { getFirstImageUrl, getImageUrl } from '../utils/image'
 import { useLocalized, useProductLabels } from '../composables/useProduct'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 
-const props = withDefaults(defineProps<{ product: any; index?: number }>(), { index: 0 })
-defineEmits<{ open: [slug: string]; purchase: [slug: string] }>()
+withDefaults(defineProps<{
+  product: any
+  index?: number
+  animationStep?: number
+}>(), {
+  index: 0,
+  animationStep: 30,
+})
+
+defineEmits<{
+  click: [slug: string]
+  quickBuy: [product: any]
+}>()
+
 const { t } = useI18n()
-const { getLocalizedText, formatPrice, siteCurrency } = useLocalized()
-const { isSoldOut, getFulfillmentTypeLabel, getStockStatusLabel, hasPromotionPrice, getPromotionPriceAmount, hasWholesalePrices, hasPromotionRules } = useProductLabels()
-const title = computed(() => getLocalizedText(props.product?.title))
-const categoryName = computed(() => getLocalizedText(props.product?.category?.name))
-const image = computed(() => getFirstImageUrl(props.product?.images) || (props.product?.category?.icon ? getImageUrl(props.product.category.icon) : ''))
-const soldOut = computed(() => isSoldOut(props.product))
-const stockLabel = computed(() => getStockStatusLabel(props.product))
-const stockBadgeClass = computed(() => {
-  if (soldOut.value) return 'bg-destructive text-white'
-  if (props.product?.stock_status === 'low_stock') return 'bg-amber-100 text-amber-700 dark:bg-amber-950/45 dark:text-amber-300'
-  return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/45 dark:text-emerald-300'
-})
-const deliveryLabel = computed(() => getFulfillmentTypeLabel(props.product?.fulfillment_type))
-const price = computed(() => formatPrice(hasPromotionPrice(props.product) ? getPromotionPriceAmount(props.product) : props.product?.price_amount, siteCurrency.value))
-const originalPrice = computed(() => hasPromotionPrice(props.product) ? formatPrice(props.product?.price_amount, siteCurrency.value) : '')
-const priceSignal = computed(() => {
-  if (hasPromotionPrice(props.product)) return t('products.promotionTag')
-  if (hasWholesalePrices(props.product)) return t('products.wholesaleTag')
-  if (hasPromotionRules(props.product)) return t('products.promotionBadge')
-  return ''
-})
+const { getLocalizedText, siteCurrency, formatPrice } = useLocalized()
+const { getPurchaseTypeLabel, getFulfillmentTypeLabel, getStockBadgeVariant, getStockStatusLabel, isSoldOut, hasPromotionPrice, getPromotionPriceAmount, hasPromotionRules, hasWholesalePrices } = useProductLabels()
 </script>
-
 <style scoped>
-.compact-product-row:active { transform:scale(.985); }
-@media (prefers-reduced-motion: reduce) { .compact-product-row,.compact-product-row button { transition:none; } .compact-product-row:active,.compact-product-row button:active { transform:none; } }
+@media (prefers-reduced-motion: reduce) {
+  .compact-product-row, .compact-product-row img { transition: none !important; animation: none !important; }
+}
 </style>

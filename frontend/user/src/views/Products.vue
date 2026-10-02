@@ -92,7 +92,7 @@
                 <span class="min-w-0 truncate font-bold">{{ group.name }}</span>
                 <span class="list-category-count">{{ group.products.length }}</span>
               </div>
-              <ProductListCard v-for="(product, productIndex) in group.products" :key="product.id" :product="product" :index="productIndex" @open="goToProduct" @purchase="goToProduct" />
+              <ProductListCard v-for="(product, productIndex) in group.products" :key="product.id" :product="product" :index="productIndex" @click="goToProduct" @quick-buy="openQuickBuy" />
             </section>
           </div>
           <div v-else class="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4">
