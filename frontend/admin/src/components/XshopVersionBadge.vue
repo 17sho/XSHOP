@@ -35,6 +35,8 @@ function completed(s: UpgradeStatus) {
     : s.state === 'installed'
 }
 let timer: ReturnType<typeof setInterval> | undefined
+// Presentation only; operation fences and signed identities keep the raw tag.
+function displayVersion(value?: string) { return value?.replace(/^xshop-preview-(v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/, '$1') || '—' }
 const labels: Record<string, string> = { idle: '等待检查', checking: '检查中', available: '可升级', installing: '下载并应用中', prepared: '已应用，需要重启', restarting: '重启中', installed: '升级完成', failed: '操作失败', up_to_date: '已是最新版本', rolling_back: '回退并核验中', rolled_back: '程序回退已确认' }
 function rejectOperation(err: any) {
   if (err?.status === 401 || err?.status === 403) { revoked.value = true; generation++; awaitingRestart.value = false; busy.value = false; refreshing = false; open.value = false; return true }
@@ -70,7 +72,7 @@ async function check() {
 async function install() {
   if (!open.value || !authStore.isSuper || !permitted.value || disposed || busy.value || awaitingRestart.value || status.value.state !== 'available' || !status.value.digest) return
   const digest = status.value.digest
-  if (!window.confirm(`下载并应用 ${status.value.version}？应用后旧进程继续服务，需另行点击立即重启。请先备份配置和数据库。`)) return
+  if (!window.confirm(`下载并应用 ${displayVersion(status.value.version)}？应用后旧进程继续服务，需另行点击立即重启。请先备份配置和数据库。`)) return
   if (!authStore.isSuper || !permitted.value || disposed || status.value.digest !== digest || status.value.state !== 'available') return
   const owner = generation
   busy.value = true; error.value = ''; prepareFeedback()
@@ -120,9 +122,9 @@ onBeforeUnmount(() => { disposed = true; generation++; window.removeEventListene
     <Transition name="upgrade-panel" :duration="windowReduced ? 0 : 200">
     <section v-if="open && permitted" role="dialog" aria-label="XSHOP 在线升级" :inert="!open || !permitted" :aria-hidden="!open || !permitted ? true : undefined" :style="{ maxWidth: panelWidth + 'px', pointerEvents: open && permitted ? undefined : 'none' }" class="fixed right-4 top-16 sm:absolute sm:right-0 sm:top-auto z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-5rem)] overflow-y-auto rounded-xl border border-border bg-card p-4 shadow-lg space-y-3 text-sm break-words">
       <div class="flex items-center justify-between"><h2 class="font-semibold">XSHOP 在线升级</h2><button type="button" aria-label="关闭升级面板" @click="open = false">×</button></div>
-      <p>当前版本：{{ status.current_version || version || '—' }}</p>
-      <p v-if="status.previous_version">上一版本：{{ status.previous_version }}</p>
-      <p v-if="status.version">目标版本：{{ status.version }}<span v-if="status.sequence">（序号 {{ status.sequence }}）</span></p>
+      <p>当前版本：{{ displayVersion(status.current_version || version) }}</p>
+      <p v-if="status.previous_version">上一版本：{{ displayVersion(status.previous_version) }}</p>
+      <p v-if="status.version">目标版本：{{ displayVersion(status.version) }}<span v-if="status.sequence">（序号 {{ status.sequence }}）</span></p>
       <p class="upgrade-step" :key="status.phase || status.state" role="status" aria-live="polite">状态：{{ awaitingRestart && activation?.kind === 'restart' && status.state === 'rolled_back' && status.current_version && status.rollback_available === false ? '旧程序已恢复；目标版本未确认' : awaitingRestart && status.state !== 'failed' ? '等待服务恢复与运行核验' : labels[status.state] || '等待状态确认' }}</p>
       <div v-if="busy || active || awaitingRestart || feedback" role="progressbar" aria-label="操作进行中，等待核验" class="upgrade-progress"><span /></div>
       <p v-if="feedback" role="status">{{ needRestart ? '下载与验证已完成，准备结果已确认' : '正在下载并验证；等待实际结果' }}</p>

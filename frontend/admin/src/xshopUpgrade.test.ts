@@ -17,6 +17,11 @@ it('renders an up-to-date phase as completed without suggesting pending confirma
  mocks.get.mockResolvedValue(envelope({ state: 'up_to_date', phase: 'up_to_date', current_version: 'xshop-preview-b3', version: 'xshop-preview-b3', sequence: 6, rollback_available: true, previous_version: 'xshop-preview-a3' })); await mount(); button('版本').click(); await flush();
  expect(el.textContent).toContain('状态：已是最新版本'); expect(el.textContent).toContain('阶段：检查完成，已是最新版本'); expect(el.textContent).not.toContain('等待状态确认'); expect(el.querySelector('[role="progressbar"]')).toBeNull(); expect(button('下载并应用').disabled).toBe(true); expect(button('回退程序').disabled).toBe(false); expect(mocks.post).not.toHaveBeenCalled()
 })
+it('displays semantic preview versions without changing signed operation identities', async () => {
+ mocks.get.mockResolvedValue(envelope({ state: 'available', current_version: 'xshop-preview-v1.0.0-beta.1', previous_version: 'xshop-preview-b3-fix1', version: 'xshop-preview-v1.0.0-beta.2', digest: 'signed-digest', sequence: 9 })); await mount(); button('版本').click(); await flush();
+ expect(el.textContent).toContain('当前版本：v1.0.0-beta.1'); expect(el.textContent).toContain('上一版本：xshop-preview-b3-fix1'); expect(el.textContent).toContain('目标版本：v1.0.0-beta.2'); expect(button('版本').textContent?.trim()).toBe('');
+ button('下载并应用').click(); await flush(); expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('下载并应用 v1.0.0-beta.2？')); expect(mocks.post).toHaveBeenCalledWith('/admin/xshop-upgrade/install', { digest: 'signed-digest' }); expect(mocks.post).toHaveBeenCalledTimes(1)
+})
 it('uses a compact icon without version text in the header', async () => {
   await mount(); const trigger = el.querySelector<HTMLButtonElement>('[aria-label="版本与在线升级"]')!;
   expect(trigger.textContent?.trim()).toBe(''); expect(trigger.getAttribute('title')).toBe('版本与在线升级'); expect(trigger.querySelector('svg')).not.toBeNull()
