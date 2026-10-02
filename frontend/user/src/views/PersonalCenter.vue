@@ -17,6 +17,9 @@
           </div>
 
           <div class="relative flex flex-wrap items-center gap-2">
+            <Button data-testid="personal-logout" type="button" variant="outline" size="sm" @click="userAuthStore.logout()">
+              <LogOut class="mr-1.5 h-4 w-4" />{{ t('navbar.logout') }}
+            </Button>
             <Badge :variant="emailVerifiedVariant" size="sm">{{ emailVerifiedLabel }}</Badge>
             <span
               v-if="userProfileStore.currentLevel"
@@ -278,7 +281,8 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { Crown, ShoppingBag, ShieldCheck, Percent } from 'lucide-vue-next'
+import { Crown, ShoppingBag, ShieldCheck, Percent, LogOut } from 'lucide-vue-next'
+import { useUserAuthStore } from '../stores/userAuth'
 import { getImageUrl } from '../utils/image'
 import { pageAlertVariant, pageAlertToneClass } from '../utils/alerts'
 import StatCard from '../components/shared/StatCard.vue'
@@ -296,6 +300,7 @@ import ApiPanel from './personal/ApiPanel.vue'
 import { usePersonalCenter, type PersonalSection } from '../composables/usePersonalCenter'
 
 const { t } = useI18n()
+const userAuthStore = useUserAuthStore()
 
 const props = withDefaults(defineProps<{ section?: PersonalSection }>(), {
   section: 'overview',
