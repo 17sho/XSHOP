@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -209,6 +211,9 @@ func RegisterUser(r *gin.Engine, fsys fs.FS) error {
 			c.String(http.StatusNotFound, "404 page not found")
 			return
 		}
+		if serveLegacyBrandAsset(c, fp) {
+			return
+		}
 		serveIndex(c, indexCached)
 	})
 	return nil
@@ -227,6 +232,43 @@ func deniedFrontendPath(name string) bool {
 		}
 	}
 	return false
+}
+
+// serveLegacyBrandAsset preserves root-level operator images without exposing
+// directories, symlinks, config files or old frontend scripts.
+func serveLegacyBrandAsset(c *gin.Context, name string) bool {
+	if strings.ContainsAny(name, "/\\") || deniedFrontendPath(name) {
+		return false
+	}
+	switch strings.ToLower(filepath.Ext(name)) {
+	case ".svg", ".png", ".jpg", ".jpeg", ".webp", ".ico":
+	default:
+		return false
+	}
+	// OpenRoot confines access even if a path is replaced concurrently.
+	root, err := os.OpenRoot("storefront-current")
+	if err != nil {
+		return false
+	}
+	defer root.Close()
+	info, err := root.Lstat(name)
+	if err != nil {
+		return false
+	}
+	if !info.Mode().IsRegular() {
+		c.Status(http.StatusNotFound)
+		return true
+	}
+	f, err := root.Open(name)
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return true
+	}
+	defer f.Close()
+	c.Header("Cache-Control", indexCacheControl)
+	c.Header("X-Content-Type-Options", "nosniff")
+	http.ServeContent(c.Writer, c.Request, name, info.ModTime(), f)
+	return true
 }
 
 func hasFile(fsys fs.FS, name string) bool {
