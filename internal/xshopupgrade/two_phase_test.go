@@ -21,7 +21,10 @@ import (
 // Synthetic signed releases only; no service configuration or data reads.
 type retentionSource struct{ raw, sig []byte }
 
-func (s retentionSource) Latest(context.Context) (string, error) { return "xshop-preview-b", nil }
+func (s retentionSource) Latest(context.Context) (string, error) { return TagPrefix + "b", nil }
+func (s retentionSource) ProductionCandidates(context.Context) ([]string, error) {
+	return []string{TagPrefix + "b"}, nil
+}
 func (s retentionSource) Asset(_ context.Context, _, name string, _ uint64) ([]byte, error) {
 	if name == "manifest.json" {
 		return s.raw, nil
@@ -35,7 +38,7 @@ func installedHelper(t *testing.T) (*Helper, *testController) {
 	n, _ := FileHash(next)
 	key, priv, _ := ed25519.GenerateKey(rand.Reader)
 	hash := strings.Repeat("a", 64)
-	m := customupgrade.Manifest{SchemaVersion: 1, Product: "XSHOP", Sequence: 2, Version: "xshop-preview-b", SourceCommit: strings.Repeat("a", 40), Channel: "preview", Profile: "embedded-preview", OS: "linux", Arch: "amd64", MinimumUpdater: 1, FromBinarySHA256: []string{old}, MigrationPolicy: "unchanged", SchemaFingerprint: hash, Archive: customupgrade.Artifact{Name: "binary.tar.gz", Size: 100, SHA256: hash}, Source: customupgrade.Artifact{Name: "source.tar.gz", Size: 100, SHA256: hash}, Files: []customupgrade.File{{Path: "dujiao-next", Size: 1, SHA256: n, Mode: 0755}}}
+	m := customupgrade.Manifest{SchemaVersion: 1, Product: "XSHOP", Sequence: 2, Version: TagPrefix + "b", SourceCommit: strings.Repeat("a", 40), Channel: Channel, Profile: Profile, OS: "linux", Arch: "amd64", MinimumUpdater: 1, FromBinarySHA256: []string{old}, MigrationPolicy: "unchanged", SchemaFingerprint: hash, Archive: customupgrade.Artifact{Name: "binary.tar.gz", Size: 100, SHA256: hash}, Source: customupgrade.Artifact{Name: "source.tar.gz", Size: 100, SHA256: hash}, Files: []customupgrade.File{{Path: "dujiao-next", Size: 1, SHA256: n, Mode: 0755}}}
 	raw, _ := json.Marshal(m)
 	sig := ed25519.Sign(priv, raw)
 	h := &Helper{Engine: e, Source: retentionSource{raw, sig}, PublicKey: key, Schema: hash}
@@ -246,7 +249,7 @@ func TestRetentionStatusProjectsSlotWithoutLegacyVersionGuess(t *testing.T) {
 	h.ServeHTTP(w, httptest.NewRequest("GET", "/status", nil))
 	var s Status
 	json.Unmarshal(w.Body.Bytes(), &s)
-	if s.CurrentVersion != "xshop-preview-b" || !s.RollbackAvailable || s.PreviousVersion != "" {
+	if s.CurrentVersion != TagPrefix+"b" || !s.RollbackAvailable || s.PreviousVersion != "" {
 		t.Fatal("status slot missing or legacy version invented", s)
 	}
 }
@@ -694,7 +697,7 @@ func TestPrepareDoesNotRestartAndExplicitRestartInstalls(t *testing.T) {
 	e, c, next := fixture(t)
 	old, _ := FileHash(e.Target)
 	candidate, _ := FileHash(next)
-	if err := e.Prepare(context.Background(), next, old, candidate, 2, "xshop-preview-b", "manifest-digest"); err != nil {
+	if err := e.Prepare(context.Background(), next, old, candidate, 2, TagPrefix+"b", "manifest-digest"); err != nil {
 		t.Fatal(err)
 	}
 	s, err := e.ReadState()
