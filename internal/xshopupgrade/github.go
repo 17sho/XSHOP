@@ -48,13 +48,21 @@ func boundedCommand(ctx context.Context, max uint64, args ...string) ([]byte, er
 }
 
 type release struct {
-	Tag    string `json:"tag_name"`
-	Draft  bool   `json:"draft"`
-	Assets []struct {
+	Tag        string `json:"tag_name"`
+	Draft      bool   `json:"draft"`
+	Prerelease bool   `json:"prerelease"`
+	Assets     []struct {
 		ID   uint64 `json:"id"`
 		Name string `json:"name"`
 		Size uint64 `json:"size"`
 	} `json:"assets"`
+}
+
+func validateReleaseIdentity(r release, tag string) error {
+	if r.Draft || !ValidTag(r.Tag) || (Production && r.Prerelease) || (tag != "" && r.Tag != tag) {
+		return errors.New("release identity rejected")
+	}
+	return nil
 }
 
 func getRelease(ctx context.Context, endpoint string) (release, error) {
@@ -64,14 +72,21 @@ func getRelease(ctx context.Context, endpoint string) (release, error) {
 		return r, err
 	}
 	err = json.Unmarshal(raw, &r)
-	if err == nil && (r.Draft || !ValidTag(r.Tag)) {
-		err = errors.New("release identity rejected")
+	if err == nil {
+		tag := ""
+		if strings.HasPrefix(endpoint, "tags/") {
+			tag = strings.TrimPrefix(endpoint, "tags/")
+		}
+		err = validateReleaseIdentity(r, tag)
 	}
 	return r, err
 }
 func (GitHub) Latest(ctx context.Context) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
+	if Production {
+		return "", errors.New("production requires authenticated bounded selection")
+	}
 	r, err := getRelease(ctx, "latest")
 	return r.Tag, err
 }

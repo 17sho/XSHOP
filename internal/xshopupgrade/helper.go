@@ -20,19 +20,18 @@ import (
 )
 
 const Repository = "17sho/XSHOP"
-const SocketPath = "/run/xshop-preview-upgrader/control.sock"
 
 var token = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$`)
 var digestPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
-func ValidTag(s string) bool   { return strings.HasPrefix(s, "xshop-preview-") && ValidAsset(s) }
+func ValidTag(s string) bool   { return strings.HasPrefix(s, TagPrefix) && ValidAsset(s) }
 func ValidAsset(s string) bool { return token.MatchString(s) && !strings.Contains(s, "..") }
 func PeerAllowed(uid, wanted uint32, cgroup string) bool {
 	if uid != wanted {
 		return false
 	}
 	for _, line := range strings.Split(cgroup, "\n") {
-		if line == "0::/system.slice/dujiao-preview.service" {
+		if line == "0::"+previewCgroup {
 			return true
 		}
 	}
@@ -77,7 +76,7 @@ func (h *Helper) policy() (customupgrade.Policy, error) {
 		return customupgrade.Policy{}, errors.New("recovery pending")
 	}
 	hash, err := FileHash(h.Engine.Target)
-	return customupgrade.Policy{PublicKey: h.PublicKey, Channel: "preview", Profile: "embedded-preview", OS: "linux", Arch: "amd64", CurrentBinarySHA256: hash, SchemaFingerprint: h.Schema, HighWaterSequence: s.HighWater, UpdaterVersion: 1}, err
+	return customupgrade.Policy{PublicKey: h.PublicKey, Channel: Channel, Profile: Profile, OS: "linux", Arch: "amd64", CurrentBinarySHA256: hash, SchemaFingerprint: h.Schema, HighWaterSequence: s.HighWater, UpdaterVersion: 1}, err
 }
 func (h *Helper) verify(ctx context.Context, tag string) (*customupgrade.VerifiedManifest, error) {
 	if !ValidTag(tag) {
@@ -126,7 +125,13 @@ func (h *Helper) finish(s Status) {
 	h.busy = false
 }
 func (h *Helper) check(ctx context.Context) {
-	tag, err := h.Source.Latest(ctx)
+	var tag string
+	var err error
+	if Production {
+		tag, err = h.productionLatest(ctx)
+	} else {
+		tag, err = h.Source.Latest(ctx)
+	}
 	if err != nil {
 		h.finish(Status{State: "failed", Message: "检查失败；请由服务器管理员查看受限日志"})
 		return
