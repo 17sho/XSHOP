@@ -147,8 +147,16 @@ func RegisterAdmin(r *gin.Engine, prefix string, fsys fs.FS) error {
 			serveIndex(c, cached)
 			return
 		}
+		if deniedFrontendPath(fp) {
+			c.String(http.StatusNotFound, "404 page not found")
+			return
+		}
 		if hasFile(fsys, fp) {
 			serveAsset(c, fileServer, fp)
+			return
+		}
+		if strings.HasPrefix(path.Clean(fp), "assets/") {
+			c.String(http.StatusNotFound, "404 page not found")
 			return
 		}
 		serveIndex(c, cached)
@@ -189,13 +197,36 @@ func RegisterUser(r *gin.Engine, fsys fs.FS) error {
 			serveIndex(c, indexCached)
 			return
 		}
+		if deniedFrontendPath(fp) {
+			c.String(http.StatusNotFound, "404 page not found")
+			return
+		}
 		if hasFile(fsys, fp) {
 			serveAsset(c, fileServer, fp)
+			return
+		}
+		if strings.HasPrefix(path.Clean(fp), "assets/") {
+			c.String(http.StatusNotFound, "404 page not found")
 			return
 		}
 		serveIndex(c, indexCached)
 	})
 	return nil
+}
+
+// deniedFrontendPath rejects private names before filesystem access and prevents
+// missing asset requests from receiving an HTML success response.
+func deniedFrontendPath(name string) bool {
+	for _, seg := range strings.Split(name, "/") {
+		if strings.HasPrefix(seg, ".") {
+			return true
+		}
+		switch strings.ToLower(seg) {
+		case "config.yaml", "config.yml", "config.json", "go.mod", "go.sum":
+			return true
+		}
+	}
+	return false
 }
 
 func hasFile(fsys fs.FS, name string) bool {
