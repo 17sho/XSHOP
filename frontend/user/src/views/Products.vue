@@ -96,7 +96,7 @@
             </section>
           </div>
           <div v-else class="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4">
-            <ProductCard v-for="(product, idx) in products" :key="product.id" :product="product" :index="idx" :max-tags="isMobileGrid ? 1 : 2" :animation-step="50" @click="goToProduct" />
+            <ProductCard v-for="(product, idx) in products" :key="product.id" :product="product" :index="idx" :max-tags="isMobileGrid ? 1 : 2" :animation-step="50" @click="goToProduct" @quick-buy="openQuickBuy" />
           </div>
           <PaginationNav :current-page="currentPage" :total-pages="totalPages" :loading="loading" @change-page="changePage" />
         </div>
@@ -111,11 +111,12 @@
       @update:visible="announcementVisible = $event"
     />
 
+    <ProductQuickBuy v-if="quickBuyProduct" :product="quickBuyProduct" :visible="quickBuyVisible" @update:visible="quickBuyVisible = $event" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Bell, FolderOpen, Megaphone, Package } from 'lucide-vue-next'
@@ -130,6 +131,13 @@ import { readCachedHomepageAd, writeCachedHomepageAd } from '../utils/homepageAd
 import { readCachedCatalogNotices, writeCachedCatalogNotices, clearCachedCatalogNotices, validateCatalogNotices } from '../utils/catalogNoticeCache'
 import { getBrowserStorage } from '../utils/browserStorage'
 import ProductCard from '../components/ProductCard.vue'
+const ProductQuickBuy = defineAsyncComponent(() => import('../components/ProductQuickBuy.vue'))
+const quickBuyProduct = ref<any>(null)
+const quickBuyVisible = ref(false)
+const openQuickBuy = (product: any) => {
+  quickBuyProduct.value = product
+  quickBuyVisible.value = true
+}
 import ProductListCard from '../components/ProductListCard.vue'
 
 import PaginationNav from '../components/PaginationNav.vue'

@@ -35,6 +35,7 @@ for (const template of ['views/Products.vue', 'templates/vault/Products.vue']) {
     for (const name of ['VaultProductCard','VaultProductListCard']) mocks[`./components/${name}.vue`] = { default: card }
     mocks['./components/VaultCategorySidebar.vue'] = { default: nil }
     mocks['../../components/ProductQuickBuy.vue'] = { default: { props: ['visible'], setup: (p: any) => () => p.visible ? vue.h('div', { 'data-fixture-quick-buy': '' }) : null } }
+    mocks['../components/ProductQuickBuy.vue'] = mocks['../../components/ProductQuickBuy.vue']
     const comp = loader(mocks)(template).default
     const host = document.createElement('div'); document.body.append(host)
     const app = vue.createApp(comp); app.component('RouterLink', { template: '<a><slot /></a>' }); app.mount(host)

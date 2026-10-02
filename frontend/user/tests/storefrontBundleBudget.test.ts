@@ -6,9 +6,9 @@ const read = (path: string) => fs.readFileSync(new URL(`../${path}`, import.meta
 const products = read('src/views/Products.vue')
 const router = read('src/router/index.ts')
 
-test('product-first homepage does not load quick-buy or cart UI', () => {
-  assert.doesNotMatch(products, /ProductQuickBuy/)
-  assert.doesNotMatch(products, /quickBuy|quick-buy/)
+test('restored card quick-buy stays lazy and does not eagerly load cart UI', () => {
+  assert.match(products, /defineAsyncComponent\(\(\) => import\('\.\.\/components\/ProductQuickBuy.vue'\)\)/)
+  assert.doesNotMatch(products, /import ProductQuickBuy from|useCartStore/)
 })
 
 test('idle prefetch only warms routes used by the focused storefront', () => {
