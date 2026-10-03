@@ -31,7 +31,7 @@ export function useProductList(options: UseProductListOptions = {}) {
   const products = ref<any[]>([])
   const categories = ref<PublicCategory[]>([])
   const selectedCategory = ref<number | null>(null)
-  const searchQuery = ref('')
+  const searchQuery = ref(typeof route.query?.search === 'string' ? route.query?.search : '')
   const currentPage = ref(1)
   const pageSize = ref(defaultPageSize)
   const totalPages = ref(0)
@@ -247,6 +247,7 @@ export function useProductList(options: UseProductListOptions = {}) {
     flush: 'sync',
   })
 
+  watch(() => route.query?.search, value => { searchQuery.value = typeof value === 'string' ? value : '' })
   watch(searchQuery, () => {
     // Search is interactive even while the initial categories are pending.
     // Invalidate the old request before the debounce fires, not after it.

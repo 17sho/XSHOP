@@ -35,7 +35,8 @@ test('static document carries Chinese brand metadata without runtime patches', (
   const html = read('index.html')
   assert.match(html, /<html lang="zh-CN">/)
   assert.match(html, /<title>XSHOP<\/title>/)
-  assert.match(html, /href="\/favicon-32x32-v5\.png"/)
+  assert.doesNotMatch(html, /<link rel="icon"/)
+  assert.match(read("src/stores/app.ts"), /siteIconLinks\(config.value\)/)
   assert.doesNotMatch(html, /MutationObserver|XMLHttpRequest/)
 })
 

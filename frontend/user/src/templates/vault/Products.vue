@@ -11,7 +11,7 @@
       <!-- 筛选侧栏：桌面竖排 + 移动端横向 chips -->
       <div class="grid min-w-0 gap-3 lg:sticky lg:top-[88px] lg:gap-5">
         <!-- 搜索框 -->
-        <div class="relative">
+        <div v-if="appStore.config?.product_search_enabled === true" class="relative">
           <Search class="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-muted-foreground" />
           <input
             v-model="searchQuery"

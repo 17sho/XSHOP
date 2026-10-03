@@ -26,7 +26,7 @@ function catalog({ view = false, warm = false, category = false } = {}): any {
     '../api': { productAPI: { list: (params: any) => { const d = deferred(); requests.push({ ...d, params }); return d.promise } }, categoryAPI: { list: () => categories.promise } },
     'vue-i18n': { useI18n: () => ({ t: (x: string) => x }) }, '@/components/ui/button': { Button: 'button' },
     '../../composables/useProduct': localized, '../../../composables/useProduct': localized,
-    '../../composables/usePageSeo': { usePageSeo() {} }, '../../stores/app': { useAppStore: () => ({ productCatalogLayout: 'card', config: {} }) },
+    '../../composables/usePageSeo': { usePageSeo() {} }, '../../stores/app': { useAppStore: () => ({ productCatalogLayout: 'card', config: { product_search_enabled: true } }) },
     '../../utils/image': { getImageUrl: (x: string) => x }, '../../../utils/image': { getImageUrl: (x: string) => x },
     './components/VaultProductCard.vue': { default: card }, './components/VaultProductListCard.vue': { default: card },
     '../../components/ProductQuickBuy.vue': { default: { props: ['visible'], setup: (p: any) => () => p.visible ? vue.h('div', { 'data-open-buy': '' }) : null } },

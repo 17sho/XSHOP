@@ -48,6 +48,7 @@
         </div>
       </section>
 
+      <div v-if="appStore.config?.product_search_enabled === true" class="mt-5"><input v-model="searchQuery" class="w-full rounded-xl border bg-card px-4 py-3 text-sm" :placeholder="t('products.searchBoxPlaceholder')" :aria-label="t('products.searchLabel')" /></div>
       <section class="category-card-grid mt-5 md:mt-6">
         <button type="button" class="category-pill" :class="{ 'category-pill-active': selectedCategory === null }" :aria-pressed="selectedCategory === null" @click="selectCategory(null)">
           <img :src="allProductsIcon" :alt="t('products.allCategories')" class="category-icon object-cover" />
@@ -192,7 +193,7 @@ watch(homepageNoticeEnabled, (enabled) => {
     void loadLatestNotices()
   }
 }, { flush: 'sync' })
-const { loading, hasLoadedOnce, catalogStale, loadError, loadProducts, contentRevision, products, selectedCategory, currentPage, totalPages, categoryGroups, categoryMap, selectCategory, changePage, initialize, cleanup } = useProductList({ pageSize: 12, homeRouteName: 'products' })
+const { searchQuery, loading, hasLoadedOnce, catalogStale, loadError, loadProducts, contentRevision, products, selectedCategory, currentPage, totalPages, categoryGroups, categoryMap, selectCategory, changePage, initialize, cleanup } = useProductList({ pageSize: 12, homeRouteName: 'products' })
 type HomepageAd = { title: Record<string, string>; content: Record<string, string> }
 const homepageAdStorage = typeof window === 'undefined' ? null : window.sessionStorage
 const homepageAdHost = typeof window === 'undefined' ? '' : window.location.host

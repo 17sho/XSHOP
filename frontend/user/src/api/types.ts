@@ -253,6 +253,8 @@ export interface ResellerSiteConfigPayload {
         description: ResellerLocalizedText
         default_og_image?: string
     }
+    product_search_enabled?: boolean
+    nav_search_enabled?: boolean
     footer_links?: Array<{ name: ResellerLocalizedText; url: string }>
     nav_config?: {
         homepage_notice_enabled?: boolean

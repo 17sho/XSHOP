@@ -3,8 +3,9 @@
     <!-- 顶栏 -->
     <header class="sticky top-0 z-50 border-b bg-[color:var(--bg)]">
       <div class="mx-auto flex h-[70px] w-full max-w-[1180px] items-center gap-3 px-4 sm:gap-5 sm:px-6">
-        <RouterLink class="inline-flex min-w-0 items-center gap-2.5 text-[19px] font-extrabold tracking-[-0.02em] text-foreground" to="/" :title="brandName">
-          <img v-if="brandLogo" :src="brandLogo" :alt="brandName" class="h-8 max-w-[120px] object-contain sm:max-w-[160px]" />
+        <RouterLink class="inline-flex min-w-0 items-center gap-2.5 text-[19px] font-extrabold tracking-[-0.02em] text-foreground" to="/" :title="appStore.config ? brandName : undefined">
+          <span v-if="!appStore.config" data-brand-placeholder aria-hidden="true" class="block h-8 w-32 shrink-0 rounded-md bg-muted/40"></span>
+          <img v-else-if="brandLogo" :src="brandLogo" :alt="brandName" class="h-8 max-w-[120px] object-contain sm:max-w-[160px]" />
           <span v-else class="truncate">{{ brandName }}</span>
         </RouterLink>
 
@@ -27,6 +28,7 @@
         </nav>
 
         <div class="ml-auto flex items-center gap-2">
+        <NavigationSearch />
 
           <RouterLink v-if="!userAuthStore.isAuthenticated" class="grid h-10 w-10 flex-none place-items-center rounded-full bg-secondary text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary" to="/guest/orders" :aria-label="t('navbar.guestOrders')" :title="t('navbar.guestOrders')"><ClipboardList class="h-[18px] w-[18px]" /></RouterLink>
           <button class="grid h-10 w-10 flex-none place-items-center rounded-full bg-secondary text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary" type="button" :aria-label="t('resellerConsole.common.toggleTheme')" @click="toggleTheme">
@@ -91,6 +93,7 @@
 </template>
 
 <script setup lang="ts">
+import NavigationSearch from '../../../components/NavigationSearch.vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Moon, Sun, Languages, Menu, X, User, ClipboardList, LogOut } from 'lucide-vue-next'

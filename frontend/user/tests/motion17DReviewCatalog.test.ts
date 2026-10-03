@@ -29,7 +29,7 @@ function fixture({ view = false, warm = false, routeCategory = false, layout = '
     '../api': { productAPI: { list: (params: any) => { const r = deferred(); requests.push({ ...r, params }); return r.promise } }, categoryAPI: { list: () => categories.promise } },
     '../../composables/useProduct': localized, '../../../composables/useProduct': localized,
     '../../composables/usePageSeo': { usePageSeo() {} },
-    '../../stores/app': { useAppStore: () => ({ productCatalogLayout: layout, config: {} }) },
+    '../../stores/app': { useAppStore: () => ({ productCatalogLayout: layout, config: { product_search_enabled: true } }) },
     '../../utils/image': { getImageUrl: (s: string) => s }, '../../../utils/image': { getImageUrl: (s: string) => s },
     './components/VaultProductCard.vue': { default: card }, './components/VaultProductListCard.vue': { default: card },
     '../../components/ProductQuickBuy.vue': { default: { props: ['visible'], setup: (p: any) => () => p.visible ? vue.h('div', { 'data-quick-buy': '' }, 'synthetic; no purchase') : null } },

@@ -217,6 +217,8 @@ const form = reactive({
   scripts: [] as SiteScriptItem[],
   footer_links: [] as FooterLinkItem[],
   storefront_template: 'classic' as 'classic' | 'vault',
+  product_search_enabled: false,
+  nav_search_enabled: false,
   product_catalog_layout: 'card' as 'card' | 'list',
 })
 
@@ -451,6 +453,8 @@ const fetchSettings = async () => {
 
       const rawStorefrontTemplate = String(data.storefront_template || 'classic').trim()
       form.storefront_template = rawStorefrontTemplate === 'vault' ? 'vault' : 'classic'
+      form.product_search_enabled = data.product_search_enabled === true
+      form.nav_search_enabled = data.nav_search_enabled === true
       const rawProductCatalogLayout = String(data.product_catalog_layout || 'card').trim()
       form.product_catalog_layout = rawProductCatalogLayout === 'list' ? 'list' : 'card'
     }
@@ -638,6 +642,8 @@ const saveSiteSettings = async () => {
       scripts: form.scripts,
       footer_links: form.footer_links,
       storefront_template: form.storefront_template,
+      product_search_enabled: form.product_search_enabled,
+      nav_search_enabled: form.nav_search_enabled,
       product_catalog_layout: form.product_catalog_layout,
     },
   }
@@ -1243,6 +1249,10 @@ onMounted(() => {
           <p class="mt-1 text-xs text-muted-foreground">{{ t('admin.settings.template.catalogLayoutSubtitle') }}</p>
         </div>
         <div class="px-6 py-6">
+          <div class="mb-5 grid gap-4 sm:grid-cols-2">
+            <label class="flex items-center justify-between gap-3 rounded-lg border p-4"><span>商品页搜索框</span><Switch v-model="form.product_search_enabled" /></label>
+            <label class="flex items-center justify-between gap-3 rounded-lg border p-4"><span>导航栏搜索入口</span><Switch v-model="form.nav_search_enabled" /></label>
+          </div>
           <RadioGroup v-model="form.product_catalog_layout" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Label class="cursor-pointer rounded-xl border-2 p-5" :class="form.product_catalog_layout === 'card' ? 'border-primary bg-primary/5' : 'border-border'">
               <RadioGroupItem value="card" class="sr-only" />

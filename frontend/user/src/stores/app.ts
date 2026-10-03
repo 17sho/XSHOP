@@ -6,6 +6,7 @@ import { applyCustomScripts } from '../utils/customScripts'
 import { getLocalizedText } from '../utils/resellerSiteConfig'
 import { detectLocale, setI18nLocale } from '../i18n'
 import { useHead } from '@unhead/vue'
+import { siteIconLinks } from '../utils/siteIcon'
 
 export const useAppStore = defineStore('app', () => {
     // 与 vue-i18n 复用同一套语言检测逻辑，避免首次访问时
@@ -36,6 +37,7 @@ export const useAppStore = defineStore('app', () => {
     // canonical / og / twitter 等页面级别字段交由各页面通过 usePageSeo 接管，
     // 避免与页面级 useHead 冲突或产生重复标签。
     useHead({
+        link: () => siteIconLinks(config.value),
         htmlAttrs: { lang: computed(() => locale.value) },
         title: () => {
             const seo = config.value?.seo
