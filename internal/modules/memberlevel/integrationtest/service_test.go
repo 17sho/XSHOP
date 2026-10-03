@@ -144,6 +144,8 @@ type concurrentUserRepository struct {
 	base                     memberlevelcontract.UserRepository
 	afterFirstSpendIncrement func()
 	spendIncrementCalled     bool
+	beforeFirstCAS           func()
+	casCalled                bool
 }
 
 func (r *concurrentUserRepository) GetByID(id uint) (*userdomain.User, error) {
@@ -170,6 +172,10 @@ func (r *concurrentUserRepository) IncrementTotalSpent(userID uint, amount decim
 }
 
 func (r *concurrentUserRepository) UpdateMemberLevelIfCurrent(userID, currentLevelID, nextLevelID uint) (int64, error) {
+	if !r.casCalled && r.beforeFirstCAS != nil {
+		r.casCalled = true
+		r.beforeFirstCAS()
+	}
 	return r.base.UpdateMemberLevelIfCurrent(userID, currentLevelID, nextLevelID)
 }
 
@@ -268,6 +274,64 @@ func TestAuditDeletedLevelBlocksFutureUpgrade(t *testing.T) {
 		t.Fatalf("unexpected level=%d", got.MemberLevelID)
 	}
 	t.Logf("CONFIRMED: total spent=%s qualifies for active level=%d, remains deleted level=%d", got.TotalSpent.StringFixed(2), target.ID, got.MemberLevelID)
+}
+
+func TestCheckAndUpgradeSelectsHighestQualifyingHistoricalLevel(t *testing.T) {
+	svc, db := newMemberLevelServiceForTest(t)
+	ordinary := createMemberLevelFixture(t, db, "history-ordinary", 0, "0", true)
+	_ = createMemberLevelFixture(t, db, "history-low", 10, "100", false)
+	gold := createMemberLevelFixture(t, db, "history-gold", 30, "300", false)
+	_ = createMemberLevelFixture(t, db, "history-unqualified", 50, "1000", false)
+	_ = createMemberLevelFixture(t, db, "history-middle", 20, "200", false)
+	user := createUserFixture(t, db, "history-highest@example.test", ordinary.ID)
+	if err := db.Model(&user).Update("total_spent", money.FromDecimal(decimal.RequireFromString("315.70"))).Error; err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 2; i++ {
+		if err := svc.CheckAndUpgrade(user.ID); err != nil {
+			t.Fatal(err)
+		}
+		got, err := gormstore.NewUserStore(db).GetByID(user.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.MemberLevelID != gold.ID {
+			t.Fatalf("level=%d want highest qualifying=%d", got.MemberLevelID, gold.ID)
+		}
+		if !got.TotalSpent.Decimal.Equal(decimal.RequireFromString("315.70")) {
+			t.Fatalf("total changed: %s", got.TotalSpent.StringFixed(2))
+		}
+	}
+}
+
+func TestCheckAndUpgradeCASPreservesConcurrentHigherLevel(t *testing.T) {
+	_, db := newMemberLevelServiceForTest(t)
+	ordinary := createMemberLevelFixture(t, db, "cas-ordinary", 0, "0", true)
+	_ = createMemberLevelFixture(t, db, "cas-silver", 10, "300", false)
+	higher := createMemberLevelFixture(t, db, "cas-higher", 100, "1000", false)
+	user := createUserFixture(t, db, "history-cas@example.test", ordinary.ID)
+	if err := db.Model(&user).Update("total_spent", money.FromDecimal(decimal.RequireFromString("315.70"))).Error; err != nil {
+		t.Fatal(err)
+	}
+	repo := &concurrentUserRepository{base: gormstore.NewUserStore(db), beforeFirstCAS: func() {
+		if err := db.Model(&user).Update("member_level_id", higher.ID).Error; err != nil {
+			t.Fatal(err)
+		}
+	}}
+	svc := memberlevelapp.NewService(gormstore.NewLevelStore(db), gormstore.NewPriceStore(db), repo)
+	if err := svc.CheckAndUpgrade(user.ID); err != nil {
+		t.Fatal(err)
+	}
+	got, err := repo.GetByID(user.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !repo.casCalled {
+		t.Fatal("concurrent CAS interleave was not exercised")
+	}
+	if got.MemberLevelID != higher.ID {
+		t.Fatalf("concurrent higher level overwritten: %d", got.MemberLevelID)
+	}
 }
 
 func TestRemediationHistoricalMissingLevelCanUpgrade(t *testing.T) {

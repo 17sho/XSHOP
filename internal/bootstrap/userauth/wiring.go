@@ -26,10 +26,14 @@ func New(c *container.Container) Handlers {
 	login := userLoginTransportAdapter{auth: c.UserAuthService, settings: c.SettingService}
 	recorder := userLoginRecorderAdapter{logs: c.UserLoginLogService}
 	captcha := captchahttp.NewVerifier(c.CaptchaService)
+	var memberLevels memberLevelReconciler
+	if c.MemberLevelService != nil {
+		memberLevels = c.MemberLevelService
+	}
 
 	return Handlers{
 		Profile: userauthtransport.NewUserProfileHandler(
-			userProfileTransportAdapter{service: c.UserAuthService, settings: c.SettingService},
+			userProfileTransportAdapter{service: c.UserAuthService, settings: c.SettingService, memberLevels: memberLevels},
 		),
 		Email: userauthtransport.NewUserEmailHandler(
 			userEmailTransportAdapter{service: c.UserAuthService, settings: c.SettingService},

@@ -33,9 +33,14 @@ import (
 )
 
 // userProfileTransportAdapter 将用户认证服务适配为用户资料 transport 端口。
+type memberLevelReconciler interface {
+	CheckAndUpgrade(userID uint) error
+}
+
 type userProfileTransportAdapter struct {
-	service  *userauthapp.Service
-	settings *settingsapp.Service
+	service      *userauthapp.Service
+	settings     *settingsapp.Service
+	memberLevels memberLevelReconciler
 }
 
 func (a userProfileTransportAdapter) GetPersonalCenterVisibility() (jsonmap.JSON, error) {
@@ -48,6 +53,15 @@ func (a userProfileTransportAdapter) GetPersonalCenterVisibility() (jsonmap.JSON
 
 func (a userProfileTransportAdapter) GetUserByID(id uint) (*userdomain.User, error) {
 	user, err := a.service.GetUserByID(id)
+	if err != nil || user == nil || a.memberLevels == nil {
+		return user, mapUserAuthTransportError(err)
+	}
+	// Levels may be created after historical spending. Reconcile without
+	// incrementing totals, then reload so this response includes the CAS result.
+	if err := a.memberLevels.CheckAndUpgrade(id); err != nil {
+		return nil, mapUserAuthTransportError(err)
+	}
+	user, err = a.service.GetUserByID(id)
 	return user, mapUserAuthTransportError(err)
 }
 
