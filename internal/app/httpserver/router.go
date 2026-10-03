@@ -277,7 +277,7 @@ func SetupRouter(cfg *config.Config, c *container.Container) *gin.Engine {
 		if err := web.RegisterAdmin(r, cfg.Web.AdminPath, web.AdminFS()); err != nil {
 			log.Sugar().Fatalf("注册 admin SPA 失败: %v", err)
 		}
-		if err := web.RegisterUser(r, web.UserFS()); err != nil {
+		if err := web.RegisterUser(r, web.UserFS(), publicconfigwiring.ResolveSiteIcon(c)); err != nil {
 			log.Sugar().Fatalf("注册 user SPA 失败: %v", err)
 		}
 	}

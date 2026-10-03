@@ -170,7 +170,7 @@ func RegisterAdmin(r *gin.Engine, prefix string, fsys fs.FS) error {
 //
 // 由于 NoRoute 在所有显式路由（API、uploads、health、admin）之后才匹配，
 // 这里不需要做路径前缀剥离；命中真实文件返回文件，否则 fallback 到 index.html。
-func RegisterUser(r *gin.Engine, fsys fs.FS) error {
+func RegisterUser(r *gin.Engine, fsys fs.FS, iconResolvers ...func(*gin.Context) (string, error)) error {
 	if r == nil {
 		return errors.New("nil gin engine")
 	}
@@ -195,8 +195,26 @@ func RegisterUser(r *gin.Engine, fsys fs.FS) error {
 		}
 
 		fp := strings.TrimPrefix(c.Request.URL.Path, "/")
+		body := indexCached
+		if len(iconResolvers) > 0 && (fp == "favicon.ico" || fp == "" || fp == "index.html" || (!hasFile(fsys, fp) && !deniedFrontendPath(fp) && !strings.HasPrefix(path.Clean(fp), "assets/"))) {
+			raw, err := iconResolvers[0](c)
+			if err != nil {
+				c.Status(http.StatusServiceUnavailable)
+				return
+			}
+			icon := checkedIcon(raw)
+			if icon == "" {
+				icon = "/favicon-v5.svg"
+			}
+			if fp == "favicon.ico" {
+				c.Header("Cache-Control", "no-store")
+				c.Redirect(http.StatusFound, icon)
+				return
+			}
+			body = firstPaintIcon(indexCached, icon)
+		}
 		if fp == "" || fp == "index.html" {
-			serveIndex(c, indexCached)
+			serveIndex(c, body)
 			return
 		}
 		if deniedFrontendPath(fp) {
@@ -214,7 +232,7 @@ func RegisterUser(r *gin.Engine, fsys fs.FS) error {
 		if serveLegacyBrandAsset(c, fp) {
 			return
 		}
-		serveIndex(c, indexCached)
+		serveIndex(c, body)
 	})
 	return nil
 }
