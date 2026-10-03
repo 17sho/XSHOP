@@ -73,10 +73,13 @@
       <div class="mb-5 mt-8 flex items-center gap-2 text-lg font-bold"><Package class="h-5 w-5 text-primary" /><span>{{ selectedCategoryTitle }}</span></div>
       <main class="category-results" :aria-busy="!loadError && (loading || catalogStale)">
         <div class="catalog-status" role="status">
+          <span v-if="!loadError && (loading || catalogStale)" class="sr-only">{{ t('common.loading') }}</span>
           <template v-if="loadError"><span>{{ t('common.error') }}</span> <button type="button" class="underline" @click="loadProducts">{{ t('common.retry') }}</button></template>
-          <span v-else-if="catalogStale && hasLoadedOnce">{{ t('common.loading') }}</span>
         </div>
-        <div v-original-list-motion="{ revision: contentRevision, stale: catalogStale }" class="catalog-content">
+        <div v-if="!loadError && (loading || catalogStale)" data-category-loading-region class="flex min-h-[320px] items-center justify-center" role="status" :aria-label="t('common.loading')">
+          <Loader2 data-category-refresh-spinner class="h-10 w-10 animate-spin motion-reduce:animate-none text-primary" aria-hidden="true" />
+        </div>
+        <div v-show="!(loading || catalogStale) || !!loadError" v-original-list-motion="{ revision: contentRevision, stale: catalogStale }" class="catalog-content">
         <div v-if="loading && !hasLoadedOnce" class="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 lg:grid-cols-4">
           <div v-for="i in 6" :key="i" class="overflow-hidden rounded-2xl border bg-card">
             <div class="h-36 theme-skeleton md:h-56"></div><div class="space-y-3 p-3 md:p-5"><div class="h-5 w-3/4 rounded theme-skeleton"></div><div class="h-3 w-full rounded theme-skeleton"></div></div>
@@ -119,7 +122,7 @@
 import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { Bell, FolderOpen, Megaphone, Package } from 'lucide-vue-next'
+import { Loader2, Bell, FolderOpen, Megaphone, Package } from 'lucide-vue-next'
 import { useAppStore } from '../stores/app'
 import { useProductList } from '../composables/useProductList'
 import { vOriginalListMotion } from '../utils/originalListMotion'

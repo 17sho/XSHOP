@@ -27,6 +27,7 @@
       <MobileBottomNav v-if="!isResellerConsole" />
     </template>
 
+    <CustomFooterLinks v-if="!isResellerConsole" />
     <Toast />
     <ConfirmDialog />
   </div>
@@ -39,6 +40,7 @@ import { useAuthRouteScroll } from './utils/authRouteScroll'
 
 import { getActiveTemplate } from './templates/registry'
 import Navbar from './components/Navbar.vue'
+import CustomFooterLinks from './components/CustomFooterLinks.vue'
 
 import Toast from './components/Toast.vue'
 import ConfirmDialog from './components/ConfirmDialog.vue'

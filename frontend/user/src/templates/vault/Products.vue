@@ -35,10 +35,13 @@
       <!-- 商品区 -->
       <section class="min-w-0" :aria-busy="!loadError && (loading || catalogStale)">
         <div class="catalog-status" role="status">
+          <span v-if="!loadError && (loading || catalogStale)" class="sr-only">{{ t('common.loading') }}</span>
           <template v-if="loadError"><span>{{ t('common.error') }}</span> <button type="button" class="underline" @click="loadProducts">{{ t('common.retry') }}</button></template>
-          <span v-else-if="catalogStale && hasLoadedOnce">{{ t('common.loading') }}</span>
         </div>
-        <div v-original-list-motion="{ revision: contentRevision, stale: catalogStale }" class="catalog-content">
+        <div v-if="!loadError && (loading || catalogStale)" data-category-loading-region class="flex min-h-[320px] items-center justify-center" role="status" :aria-label="t('common.loading')">
+          <Loader2 data-category-refresh-spinner class="h-10 w-10 animate-spin motion-reduce:animate-none text-primary" aria-hidden="true" />
+        </div>
+        <div v-show="!(loading || catalogStale) || !!loadError" v-original-list-motion="{ revision: contentRevision, stale: catalogStale }" class="catalog-content">
         <div v-if="loading && !hasLoadedOnce" class="grid gap-4 grid-cols-[repeat(auto-fill,minmax(228px,1fr))]">
           <div v-for="i in 9" :key="i" class="h-[280px] rounded-lg border bg-card"></div>
         </div>
@@ -101,7 +104,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { ChevronLeft, ChevronRight, PackageOpen, Search, SearchX, X } from 'lucide-vue-next'
+import { Loader2, ChevronLeft, ChevronRight, PackageOpen, Search, SearchX, X } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import { useProductList } from '../../composables/useProductList'
 import { vOriginalListMotion } from '../../utils/originalListMotion'

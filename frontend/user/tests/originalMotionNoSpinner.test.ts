@@ -10,9 +10,9 @@ function sources(dir: URL): string[] {
     return entry.isDirectory() ? sources(url) : /\.(vue|css|ts)$/.test(entry.name) ? [url.pathname] : []
   })
 }
-test('customer frontend has no spinning loader markup or spin keyframes', () => {
+test('only category refresh restores spinning loader markup', () => {
   const offenders = sources(root).filter(file => /animate-spin|@keyframes\s+spin\b|animation:\s*spin\b/.test(fs.readFileSync(file, 'utf8')))
-  assert.deepEqual(offenders.map(file => path.relative(root.pathname, file)), [])
+  assert.deepEqual(offenders.map(file => path.relative(root.pathname, file)).sort(), ['templates/vault/Products.vue', 'views/Products.vue'])
 })
 test('pagination preserves pending disablement and readable status without a ring', () => {
   const source = read('components/PaginationNav.vue')

@@ -19,7 +19,7 @@ test('actual reseller shell retains chrome and query drafts across lazy child na
     '../../composables/reseller/useResellerProfile': { useResellerProfile: () => ({ loading: vue.ref(false), state: vue.ref({ modules: { orders: { enabled: true }, site: { enabled: true } } }), load: async () => { loads++ } }) },
   }).default
   const mocks: Record<string, any> = { './templates/registry': { getActiveTemplate: () => 'classic' }, './components/ErrorBoundary.vue': { default: wrapper } }
-  for (const name of ['Navbar', 'Toast', 'ConfirmDialog', 'BackToTop', 'MobileBottomNav']) mocks[`./components/${name}.vue`] = { default: Empty }
+  for (const name of ['Navbar', 'Toast', 'ConfirmDialog', 'BackToTop', 'MobileBottomNav', 'CustomFooterLinks']) mocks[`./components/${name}.vue`] = { default: Empty }
   const App = loadSource('App.vue', mocks).default
   const page = (title: string) => ({ setup: () => () => vue.h('section', [title, vue.h('input', { value: 'persistent draft' })]) })
   let release!: (value: any) => void

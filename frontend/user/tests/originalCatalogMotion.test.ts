@@ -185,7 +185,7 @@ for (const template of ['views/Products.vue', 'templates/vault/Products.vue']) {
     try {
       f.categories.resolve({ data: { data: categoryRows } }); f.requests[0].resolve(result()); await settle()
       assert.equal(rows(f).length, 4, 'every actual item owns the original CSS entrance')
-      assert.deepEqual(rows(f).map(row => row.style.animationDelay), layout === 'list' ? ['0ms', '20ms', '0ms', '20ms'] : ['0ms', '50ms', '100ms', '150ms'])
+      assert.deepEqual(rows(f).map(row => row.style.animationDelay), layout === 'list' ? (template === 'views/Products.vue' ? ['0ms', '30ms', '0ms', '30ms'] : ['0ms', '20ms', '0ms', '20ms']) : ['0ms', '50ms', '100ms', '150ms'])
       assert.equal(f.animations.length, 0, 'no parallel whole-container animation')
     } finally { f.cleanup() }
   })

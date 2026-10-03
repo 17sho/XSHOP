@@ -5,8 +5,8 @@ import { vue, dom, loadSource, settle } from './helpers/motion17CHarness.ts'
 const { createRouter, createMemoryHistory } = await import('vue-router')
 
 const locales = {
-  'zh-CN': ['本机订单', '邮箱查询'],
-  'zh-TW': ['本機訂單', '信箱查詢'],
+  'zh-CN': ['浏览器订单', '邮箱查询'],
+  'zh-TW': ['瀏覽器訂單', '信箱查詢'],
   'en-US': ['This browser', 'Email lookup'],
 }
 const read = (path: string) => readFileSync(new URL('../' + path, import.meta.url), 'utf8')

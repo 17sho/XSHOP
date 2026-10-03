@@ -35,7 +35,7 @@ func TestSignedPackageInstallActuallyPrepares(t *testing.T) {
 		t.Fatal(h.status)
 	}
 	digest := h.status.Digest
-	h.install(context.Background(), "xshop-preview-b1", digest)
+	h.install(context.Background(), "xshop-production-b1", digest)
 	if h.status.State != "prepared" || !h.status.NeedRestart || ctl.started != 0 {
 		t.Fatal("signed install did not prepare without restart", h.status, ctl.started)
 	}

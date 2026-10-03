@@ -125,6 +125,8 @@ func TestManifestPolicy(t *testing.T) {
 		m, p, k := fixture(t)
 		m["channel"] = "stable"
 		p.Channel = "stable"
+		m["profile"] = "embedded-production"
+		p.Profile = "embedded-production"
 		raw, sig := signed(t, m, k)
 		if _, e := VerifyManifest(raw, sig, p); e != nil {
 			t.Fatal(e)

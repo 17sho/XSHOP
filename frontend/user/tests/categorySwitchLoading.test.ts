@@ -17,10 +17,10 @@ test('stale category responses cannot replace the latest selection', () => {
   assert.match(composable, /if \(requestId !== productRequestId\) return/)
 })
 
-test('category refresh preserves populated results with a lightweight busy state', () => {
+test('category refresh preserves populated results with a centered loading region', () => {
   assert.match(products, /v-if="loading && !hasLoadedOnce"/)
   assert.match(products, /class="catalog-status" role="status"/)
-  assert.match(products, /v-else-if="catalogStale && hasLoadedOnce"/)
+  assert.match(products, /data-category-loading-region/)
   assert.match(products, /v-else-if="products\.length" class="catalog-feedback" :inert="catalogStale \|\| undefined"/)
   assert.doesNotMatch(products, /v-else-if="loading"/)
 })

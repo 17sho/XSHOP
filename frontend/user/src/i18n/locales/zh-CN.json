@@ -1641,7 +1641,7 @@
       "browserFailed": "浏览器订单加载失败"
     },
     "tabs": {
-      "browser": "本机订单",
+      "browser": "浏览器订单",
       "credentials": "邮箱查询"
     },
     "browserEmpty": "此浏览器暂无订单",

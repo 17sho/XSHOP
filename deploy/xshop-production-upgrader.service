@@ -1,0 +1,48 @@
+[Unit]
+Description=XSHOP narrowly scoped production upgrade helper (review required)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/local/libexec/xshop-production-upgrader
+Environment=HOME=/root
+Environment=GH_CONFIG_DIR=/root/.config/gh
+Environment=GH_PROMPT_DISABLED=1
+Environment=GH_NO_UPDATE_NOTIFIER=1
+RuntimeDirectory=xshop-production-upgrader
+RuntimeDirectoryMode=0755
+StateDirectory=xshop-production-upgrader
+StateDirectoryMode=0700
+UMask=0077
+Restart=on-failure
+# Parent helper exits 78 on uncertain startup recovery; never auto-replay it.
+RestartPreventExitStatus=78
+RestartSec=5
+TimeoutStopSec=120
+KillMode=control-group
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/opt/dujiao-next /var/lib/xshop-production-upgrader /run/xshop-production-upgrader
+ReadOnlyPaths=/opt/dujiao-preview
+# SETUID/SETGID are needed to launch the fixed, group-free non-root hash worker.
+# Do not add SYS_PTRACE: the worker reads only the fixed production process.
+CapabilityBoundingSet=CAP_DAC_OVERRIDE CAP_CHOWN CAP_SETUID CAP_SETGID
+# Full sandbox exec otherwise loses SETUID; worker explicitly clears inherited caps.
+AmbientCapabilities=CAP_SETUID
+MemoryMax=768M
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

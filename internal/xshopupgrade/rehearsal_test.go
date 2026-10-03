@@ -102,7 +102,7 @@ func TestRetentionSignedDisposableSystemdManualRollback(t *testing.T) {
 	source := []byte("synthetic corresponding-source fixture")
 	pub, priv, _ := ed25519.GenerateKey(rand.Reader)
 	schema := strings.Repeat("a", 64)
-	m := customupgrade.Manifest{SchemaVersion: 1, Product: "XSHOP", Sequence: 2, Version: "xshop-preview-systemd-fixture", SourceCommit: strings.Repeat("a", 40), Channel: "preview", Profile: "embedded-preview", OS: "linux", Arch: "amd64", MinimumUpdater: 1, FromBinarySHA256: []string{old}, MigrationPolicy: "unchanged", SchemaFingerprint: schema, Archive: customupgrade.Artifact{Name: "binary.tar.gz", Size: uint64(archive.Len()), SHA256: sha(archive.Bytes())}, Source: customupgrade.Artifact{Name: "source.tar.gz", Size: uint64(len(source)), SHA256: sha(source)}, Files: []customupgrade.File{{Path: "dujiao-next", Size: uint64(len(next)), SHA256: newHash, Mode: 0755}}}
+	m := customupgrade.Manifest{SchemaVersion: 1, Product: "XSHOP", Sequence: 2, Version: "xshop-production-systemd-fixture", SourceCommit: strings.Repeat("a", 40), Channel: "stable", Profile: "embedded-production", OS: "linux", Arch: "amd64", MinimumUpdater: 1, FromBinarySHA256: []string{old}, MigrationPolicy: "unchanged", SchemaFingerprint: schema, Archive: customupgrade.Artifact{Name: "binary.tar.gz", Size: uint64(archive.Len()), SHA256: sha(archive.Bytes())}, Source: customupgrade.Artifact{Name: "source.tar.gz", Size: uint64(len(source)), SHA256: sha(source)}, Files: []customupgrade.File{{Path: "dujiao-next", Size: uint64(len(next)), SHA256: newHash, Mode: 0755}}}
 	assets := filepath.Join(root, "assets")
 	os.Mkdir(assets, 0700)
 	manifest, _ := json.Marshal(m)
@@ -162,6 +162,10 @@ func TestRetentionSignedDisposableSystemdManualRollback(t *testing.T) {
 
 type localSource struct{ dir string }
 
+func (s localSource) ProductionCandidates(ctx context.Context) ([]string, error) {
+	tag, err := s.Latest(ctx)
+	return []string{tag}, err
+}
 func (s localSource) Latest(context.Context) (string, error) {
 	raw, err := os.ReadFile(filepath.Join(s.dir, "manifest.json"))
 	if err != nil {

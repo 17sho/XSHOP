@@ -27,7 +27,7 @@ func validateArtifact(a Artifact, max uint64) bool {
 }
 func validatePolicy(m Manifest, p Policy) error { return validateManifestPolicy(m, p, false) }
 func validateManifestPolicy(m Manifest, p Policy, installed bool) error {
-	if m.Profile != "embedded-preview" || p.Profile != "embedded-preview" {
+	if m.Profile != p.Profile || !((p.Profile == "embedded-preview" && p.Channel == "preview") || (p.Profile == "embedded-production" && p.Channel == "stable")) {
 		return ErrUnsupportedProfile
 	}
 	if m.SchemaVersion != 1 || m.Product != "XSHOP" || m.Sequence == 0 || (!installed && m.Sequence <= p.HighWaterSequence) {

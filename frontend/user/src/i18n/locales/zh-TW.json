@@ -1684,7 +1684,7 @@
       "browserFailed": "瀏覽器訂單載入失敗"
     },
     "tabs": {
-      "browser": "本機訂單",
+      "browser": "瀏覽器訂單",
       "credentials": "信箱查詢"
     },
     "browserEmpty": "此瀏覽器暫無訂單",

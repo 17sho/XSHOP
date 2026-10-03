@@ -13,7 +13,7 @@ func TestHelperPreparedStatusAndExplicitRestart(t *testing.T) {
 	e, _, next := fixture(t)
 	old, _ := FileHash(e.Target)
 	candidate, _ := FileHash(next)
-	if err := e.Prepare(context.Background(), next, old, candidate, 2, "xshop-preview-b", strings.Repeat("a", 64)); err != nil {
+	if err := e.Prepare(context.Background(), next, old, candidate, 2, "xshop-production-b", strings.Repeat("a", 64)); err != nil {
 		t.Fatal(err)
 	}
 	h := &Helper{Engine: e}

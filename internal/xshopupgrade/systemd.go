@@ -17,10 +17,6 @@ import (
 	"time"
 )
 
-const PreviewService = "dujiao-preview.service"
-const PreviewRoot = "/opt/dujiao-preview"
-const StateRoot = "/var/lib/xshop-preview-upgrader"
-
 type Systemd struct{ HealthURL string }
 
 func systemctl(ctx context.Context, args ...string) (string, error) {
@@ -204,7 +200,7 @@ try:
   f=os.open(name,os.O_RDONLY|os.O_CLOEXEC,dir_fd=d)
   with os.fdopen(f,'rb') as r: return r.read(65536)
  def check():
-  if read('cgroup')!=b'0::/system.slice/dujiao-preview.service\n': raise RuntimeError('cgroup rejected')
+  if read('cgroup')!=b'0::` + previewCgroup + `\n': raise RuntimeError('cgroup rejected')
   s=dict(line.split(':',1) for line in read('status').decode().splitlines() if ':' in line)
   if s['Uid'].split()!=[str(i['uid'])]*4 or s['Gid'].split()!=[str(i['gid'])]*4: raise RuntimeError('target credentials rejected')
   if read('stat').decode().rsplit(')',1)[1].split()[19]!=i['start']: raise TargetChanged('PID replaced')
@@ -359,6 +355,9 @@ type OperatorPolicy struct {
 }
 
 func ValidateOperatorPolicy(p OperatorPolicy) error {
+	if Production && (p.Database != "/opt/dujiao-next/db/dujiao.db" || p.Port != 18080) {
+		return errors.New("production database/port rejected")
+	}
 	if _, err := ParseKey(p.PublicKey); err != nil {
 		return err
 	}

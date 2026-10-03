@@ -14,7 +14,7 @@ import (
 )
 
 func TestSystemdUnitRestrictedHashPolicy(t *testing.T) {
-	raw, err := os.ReadFile("../../deploy/xshop-preview-upgrader.service")
+	raw, err := os.ReadFile("../../deploy/xshop-production-upgrader.service")
 	if err != nil {
 		t.Fatal(err)
 	}

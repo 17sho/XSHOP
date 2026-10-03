@@ -96,14 +96,12 @@
       <!-- Quick buy cart icon -->
       <Button
         type="button"
-        variant="outline"
-        size="icon"
-        class="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0"
+        class="list-purchase-button h-8 min-w-[62px] px-3 text-xs font-semibold flex-shrink-0"
         :aria-label="t('products.quickBuyAria')"
         :disabled="isSoldOut(product)"
         @click.stop="$emit('quickBuy', product)"
       >
-        <ShoppingCart class="h-4 w-4" />
+        {{ t('products.quickBuy') }}
       </Button>
 
       <!-- Arrow -->
@@ -115,7 +113,7 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { ChevronRight, Image as ImageIcon, ShoppingCart } from 'lucide-vue-next'
+import { ChevronRight, Image as ImageIcon } from 'lucide-vue-next'
 import { getFirstImageUrl, getImageUrl } from '../utils/image'
 import { useLocalized, useProductLabels } from '../composables/useProduct'
 import { Badge } from '@/components/ui/badge'
@@ -141,6 +139,9 @@ const { getLocalizedText, siteCurrency, formatPrice } = useLocalized()
 const { getPurchaseTypeLabel, getFulfillmentTypeLabel, getStockBadgeVariant, getStockStatusLabel, isSoldOut, hasPromotionPrice, getPromotionPriceAmount, hasPromotionRules, hasWholesalePrices } = useProductLabels()
 </script>
 <style scoped>
+.list-purchase-button { background: #1677ff; color: #fff; border-radius: 10px; }
+.list-purchase-button:hover { background: #0968e8; }
+.list-purchase-button:disabled { background: #94a7c0; opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
   .compact-product-row, .compact-product-row img { transition: none !important; animation: none !important; }
 }
