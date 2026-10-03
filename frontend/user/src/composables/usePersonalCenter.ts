@@ -116,7 +116,7 @@ export function usePersonalCenter(sectionGetter: () => PersonalSection) {
     return t('personalCenter.memberLevel.noDiscount')
   })
 
-  const isImagePath = (icon: string | undefined | null) => icon?.startsWith('/uploads/') || icon?.startsWith('http')
+  const isImagePath = (icon: string | undefined | null) => icon?.startsWith('/assets/member-icons/') || icon?.startsWith('/uploads/') || icon?.startsWith('http')
 
   const levelName = (level: PublicMemberLevel | null | undefined) => {
     if (!level) return t('personalCenter.memberLevel.defaultLevel')

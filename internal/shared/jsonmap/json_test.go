@@ -5,6 +5,16 @@ import (
 	"testing"
 )
 
+func TestScanSQLiteTextName(t *testing.T) {
+	var value JSON
+	if err := value.Scan(`{"zh-CN":"普通会员"}`); err != nil {
+		t.Fatal(err)
+	}
+	if value["zh-CN"] != "普通会员" {
+		t.Fatalf("lost localized name: %#v", value)
+	}
+}
+
 func TestJSONDatabaseRoundTrip(t *testing.T) {
 	original := JSON{
 		"enabled": true,

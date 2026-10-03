@@ -99,7 +99,8 @@ export const useUserProfileStore = defineStore('user-profile', () => {
 
     const currentLevel = computed(() => {
         const levelId = profile.value?.member_level_id
-        if (!levelId || memberLevels.value.length === 0) return null
+        if (memberLevels.value.length === 0) return null
+        if (!levelId) return memberLevels.value.find((l) => l.is_default) || null
         return memberLevels.value.find((l) => l.id === levelId) || null
     })
 
@@ -133,7 +134,11 @@ export const useUserProfileStore = defineStore('user-profile', () => {
     const loadMemberLevels = async () => {
         try {
             const response = await memberLevelAPI.list()
-            memberLevels.value = Array.isArray(response.data.data) ? response.data.data : []
+            memberLevels.value = Array.isArray(response.data.data) ? response.data.data.map((level: PublicMemberLevel) => {
+                const bundled = ['standard', 'silver', 'gold', 'diamond'].includes(level.slug)
+                const previewIcon = `/uploads/member-icons/${level.slug}-v1.svg`
+                return { ...level, icon: bundled && (!level.icon || level.icon === previewIcon) ? `/assets/member-icons/${level.slug}-v1.svg` : level.icon }
+            }) : []
         } catch {
             memberLevels.value = []
         }

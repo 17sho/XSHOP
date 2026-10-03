@@ -27,6 +27,9 @@ func (value *JSON) Scan(source interface{}) error {
 		return nil
 	}
 	bytes, ok := source.([]byte)
+	if text, isText := source.(string); isText {
+		bytes, ok = []byte(text), true
+	}
 	if !ok {
 		return nil
 	}
