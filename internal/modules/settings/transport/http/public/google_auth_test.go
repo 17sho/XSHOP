@@ -229,3 +229,26 @@ func TestResolvePersonalCenterVisibilityPublicConfigUsesDefaults(t *testing.T) {
 		t.Fatalf("public visibility = %#v, want %#v", got, want)
 	}
 }
+
+func TestFooterTextPublicNoRowDefault(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	cache := &noticeCacheStub{}
+	settings := noticeSettingsStub{}
+	h := NewHandler(cache, settings, settings, nil, nil, TelegramAuthFallback{}, nil, GoogleAuthFallback{}, nil, GitHubAuthFallback{}, nil)
+	for i := 0; i < 2; i++ {
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "/api/v1/config", nil)
+		h.GetConfig(c)
+		var envelope struct {
+			Code int                    `json:"code"`
+			Data map[string]interface{} `json:"data"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &envelope); err != nil {
+			t.Fatal(err)
+		}
+		if w.Code != 200 || envelope.Code != 0 || envelope.Data["footer_text"] != "" {
+			t.Fatalf("missing empty footer_text default: %s", w.Body.String())
+		}
+	}
+}

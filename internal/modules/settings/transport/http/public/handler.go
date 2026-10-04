@@ -152,7 +152,8 @@ func (h *Handler) GetConfig(c *gin.Context) {
 			"telegram": "https://telegram.me/dujiaoka",
 			"whatsapp": "https://wa.me/1234567890",
 		},
-		"scripts": make([]interface{}, 0),
+		"footer_text": "",
+		"scripts":     make([]interface{}, 0),
 	}
 
 	tenant, _ := reseller.TenantFromContext(c.Request.Context())

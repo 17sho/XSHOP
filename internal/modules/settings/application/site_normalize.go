@@ -44,6 +44,7 @@ func normalizeSiteSetting(value map[string]interface{}) jsonmap.JSON {
 	normalized["legal"] = normalizeSiteLocalizedBlock(value["legal"], []string{"terms", "privacy"})
 	normalized["scripts"] = normalizeSiteScripts(value["scripts"])
 	normalized["footer_links"] = normalizeSiteFooterLinks(value["footer_links"])
+	normalized["footer_text"] = normalizeSettingText(value["footer_text"])
 	normalized[constants.SettingFieldSiteCurrency] = normalizeSiteCurrency(value[constants.SettingFieldSiteCurrency])
 
 	normalized[constants.SettingFieldStorefrontTemplate] = normalizeStorefrontTemplate(value[constants.SettingFieldStorefrontTemplate])

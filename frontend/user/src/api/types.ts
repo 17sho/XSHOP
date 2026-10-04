@@ -2,6 +2,7 @@ import type { SecurityCenterConfig } from '../utils/securityCenterConfig'
 export type { SecurityCenterConfig } from '../utils/securityCenterConfig'
 /** Optional only for compatibility with resolved legacy public-config responses. */
 export interface PublicConfigData extends Record<string, any> {
+    footer_text?: string
     security_center_config?: SecurityCenterConfig | null
 }
 

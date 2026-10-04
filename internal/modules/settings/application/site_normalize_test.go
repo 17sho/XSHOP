@@ -782,3 +782,50 @@ func TestNormalizeNavConfigDropsRemovedBuiltinDestinations(t *testing.T) {
 		t.Fatalf("expected only retained notice=false, got %+v", builtin)
 	}
 }
+
+func TestFooterTextServicePublicRoundTrip(t *testing.T) {
+	repo := newMockSettingRepo()
+	svc := NewService(repo)
+	_, err := svc.Update(constants.SettingKeySiteConfig, map[string]interface{}{
+		"footer_text":  " © {year} 雪糕数卡 ",
+		"footer_links": []interface{}{map[string]interface{}{"name": "支持", "url": "https://example.invalid"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	config, err := svc.GetConfig(map[string]interface{}{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config["footer_text"] != "© {year} 雪糕数卡" || len(config["footer_links"].([]interface{})) != 1 {
+		t.Fatalf("public config lost saved footer: %#v", config)
+	}
+}
+
+func TestSiteFooterTextNormalization(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		raw  interface{}
+		want string
+	}{
+		{"unset", nil, ""}, {"whitespace", " \n ", ""},
+		{"copyright", " © {year} 雪糕数卡 ", "© {year} 雪糕数卡"},
+		{"html remains text", "<img src=x onerror=alert(1)>", "<img src=x onerror=alert(1)>"},
+		{"object rejected", map[string]interface{}{"text": "bad"}, ""}, {"number rejected", 2026, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			input := map[string]interface{}{"footer_text": tc.raw, "footer_links": []interface{}{map[string]interface{}{"name": "支持", "url": "https://example.invalid"}}, "product_search_enabled": true}
+			got := normalizeSiteSetting(input)
+			if got["footer_text"] != tc.want {
+				t.Fatalf("footer_text = %#v, want %q", got["footer_text"], tc.want)
+			}
+			if len(got["footer_links"].([]interface{})) != 1 || got["product_search_enabled"] != true {
+				t.Fatal("unrelated settings lost")
+			}
+			again := normalizeSiteSetting(got)
+			if again["footer_text"] != tc.want {
+				t.Fatal("footer text lost on read/save round trip")
+			}
+		})
+	}
+}

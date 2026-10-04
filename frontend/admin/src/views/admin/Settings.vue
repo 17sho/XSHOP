@@ -215,6 +215,7 @@ const form = reactive({
     privacy: createLocalizedField(),
   },
   scripts: [] as SiteScriptItem[],
+  footer_text: '',
   footer_links: [] as FooterLinkItem[],
   storefront_template: 'classic' as 'classic' | 'vault',
   product_search_enabled: false,
@@ -447,6 +448,7 @@ const fetchSettings = async () => {
       const scripts = normalizeSiteScripts(data.scripts)
       form.scripts.splice(0, form.scripts.length, ...scripts)
 
+      form.footer_text = typeof data.footer_text === 'string' ? data.footer_text : ''
       const footerLinks = normalizeFooterLinks(data.footer_links)
       form.footer_links.splice(0, form.footer_links.length, ...footerLinks)
 
@@ -640,6 +642,7 @@ const saveSiteSettings = async () => {
       seo: form.seo,
       legal: form.legal,
       scripts: form.scripts,
+      footer_text: form.footer_text,
       footer_links: form.footer_links,
       storefront_template: form.storefront_template,
       product_search_enabled: form.product_search_enabled,
@@ -1086,6 +1089,12 @@ onMounted(() => {
             <Textarea v-model="form.seo.description[currentLang]" rows="3" :placeholder="t('admin.settings.seo.descriptionPlaceholder')" />
           </div>
         </div>
+      </div>
+
+      <div class="rounded-xl border border-border bg-card p-6 space-y-2">
+        <label for="site-footer-text" class="text-lg font-semibold">{{ t('admin.settings.footerText.title') }}</label>
+        <Textarea id="site-footer-text" v-model="form.footer_text" rows="2" :placeholder="t('admin.settings.footerText.placeholder', { yearToken: '{year}' })" />
+        <p class="text-xs text-muted-foreground">{{ t('admin.settings.footerText.hint', { yearToken: '{year}' }) }}</p>
       </div>
 
       <div class="rounded-xl border border-border bg-card">

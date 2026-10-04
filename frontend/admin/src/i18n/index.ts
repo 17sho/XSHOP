@@ -2993,6 +2993,11 @@ const messages = {
           whatsapp: 'WhatsApp 链接',
           whatsappPlaceholder: 'https://wa.me/...',
         },
+        footerText: {
+          title: '页脚文字',
+          placeholder: '© {yearToken} 雪糕数卡',
+          hint: '留空隐藏，所有语言共用；仅显示纯文字，不执行 HTML。{yearToken} 会在前台替换为浏览器当前年份，可填写 © {yearToken} 雪糕数卡。',
+        },
         footerLinks: {
           title: '页脚自定义链接',
           subtitle: '配置前台页脚展示的自定义链接（如 ICP 备案号等）',
@@ -7097,6 +7102,11 @@ const messages = {
           whatsapp: 'WhatsApp 連結',
           whatsappPlaceholder: 'https://wa.me/...',
         },
+        footerText: {
+          title: '頁尾文字',
+          placeholder: '© {yearToken} 雪糕数卡',
+          hint: '留空隱藏，所有語言共用；僅顯示純文字，不執行 HTML。{yearToken} 會在前台替換為瀏覽器當前年份，可填寫 © {yearToken} 雪糕數卡。',
+        },
         footerLinks: {
           title: '頁尾自訂連結',
           subtitle: '配置前台頁尾展示的自訂連結（如 ICP 備案號等）',
@@ -11200,6 +11210,11 @@ const messages = {
           telegramPlaceholder: 'https://telegram.me/...',
           whatsapp: 'WhatsApp',
           whatsappPlaceholder: 'https://wa.me/...',
+        },
+        footerText: {
+          title: 'Footer text',
+          placeholder: '© {yearToken} 雪糕数卡',
+          hint: 'Leave blank to hide; shared across languages. Plain text only, no HTML execution. {yearToken} is replaced with the browser’s current year in the storefront. Example: © {yearToken} Your shop.',
         },
         footerLinks: {
           title: 'Custom Footer Links',
