@@ -1,281 +1,118 @@
+<div align="center">
+
 # XSHOP
 
-XSHOP 是基于 Dujiao-Next 定制的数字商品商城源码，包含 Go 后端、Vue 用户商城和管理后台。
+### 数字商品商城 · 自托管 · Go + Vue
 
-## 项目说明
+从商品管理到订单交付，连接用户商城与管理后台。
 
-- 本仓库提供去身份化的源码版本，默认品牌采用 XSHOP。
-- 不包含真实站点配置、业务数据库、订单、客户资料或部署凭据；示例配置必须在使用前自行填写。
-- 当前未提供 XSHOP 专用的一键安装器或正式发布包；请按下方源码构建说明进行构建。
-- 工作流保存在 `source-workflows/` 供参考，未作为 GitHub Actions 启用。
+[![正式发布](https://img.shields.io/github/v/release/17sho/XSHOP?label=release&color=2563eb)](https://github.com/17sho/XSHOP/releases/latest)
+[![许可证](https://img.shields.io/github/license/17sho/XSHOP?color=64748b)](LICENSE)
+[![Go](https://img.shields.io/badge/Go-1.26.8-00ADD8?logo=go&logoColor=white)](go.mod)
+[![Vue](https://img.shields.io/badge/Vue-3-42b883?logo=vuedotjs&logoColor=white)](frontend/user/package.json)
 
-## 来源与许可证
+**[获取正式版](https://github.com/17sho/XSHOP/releases/latest) · [文档导航](docs/README.md) · [源码构建](docs/DEVELOPMENT.md) · [正式升级](docs/UPGRADE.md)**
 
-本项目基于 [Dujiao-Next](https://github.com/dujiao-next/dujiao-next)。保留原项目版权声明与许可证，具体条款见 [LICENSE](LICENSE)。XSHOP 是定制版本，不代表上游项目或其赞助商。
+</div>
 
-下方保留技术参考文档；其中的上游软件包、镜像和安装脚本不等同于 XSHOP 版本。
+---
 
-## Tech Stack
+## 项目简介
 
-| Layer | Stack |
-| --- | --- |
-| Backend | Go 1.26 · Gin · GORM · SQLite / PostgreSQL |
-| Auth | JWT (separate admin / user realms) · Casbin RBAC · TOTP 2FA |
-| Async | asynq on Redis (optional — the server runs without it) |
-| Config | Viper (`config.yml`) |
-| Frontend | Vue 3 · Vite · TypeScript · Tailwind CSS v4 · pnpm 10 |
-| Admin UI | shadcn-vue / reka-ui |
+XSHOP 是基于 [Dujiao-Next](https://github.com/dujiao-next/dujiao-next) 定制的数字商品商城，包含 Go 后端、Vue 用户商城与管理后台。采用模块化单体架构，支持内嵌前后台资源的全栈构建。
 
-## Repository Layout
+本仓库提供去身份化的源码与技术文档，不包含真实站点配置、客户资料、业务数据库、订单或部署凭据。默认品牌为 XSHOP，示例配置需要自行填写。
 
-```
-.
-├── cmd/server/               # entry point; also hosts the `admin` operator subcommands
-├── internal/
-│   ├── app/                  # composition root
-│   │   ├── container/        # dependency-injection container
-│   │   ├── httpserver/       # Gin router, route groups, middleware
-│   │   └── jobs/             # asynq worker service and consumers
-│   ├── bootstrap/            # per-module wiring (adapters.go + wiring.go)
-│   ├── modules/              # 35 business modules — one vertical slice per domain
-│   ├── workflows/            # use cases that span several modules
-│   ├── platform/             # framework-facing infrastructure
-│   │   ├── database/gormdb/  # connection, auto-migration
-│   │   └── http/             # response envelope, Gin helpers
-│   ├── shared/               # dependency-free primitives (money, jsonmap, serial …)
-│   ├── authz/                # Casbin RBAC: policy model, built-in role seeds
-│   ├── web/                  # SPA embedding and mounting (build-tag gated)
-│   ├── architecture/         # architecture guard tests — no production code
-│   ├── cache/ config/ constants/ crypto/ i18n/ logger/ queue/ version/
-│   └── admincmd/ htmltext/ persistence/ telegramidentity/ testkit/ upstream/
-├── frontend/
-│   ├── admin/                # admin panel SPA        (dev :5174)
-│   └── user/                 # customer storefront SPA (dev :5173)
-├── config.yml.example
-├── Dockerfile                # single full-stack image
-└── .goreleaser.yaml
-```
+> **版本入口**：当前正式发布为 [1.1.9](https://github.com/17sho/XSHOP/releases/tag/xshop-production-v1.1.9)，提供 Linux amd64 升级包、对应源码包、签名清单及许可证。默认分支保留源码快照，**不等同于最新正式包的源码**；复现某一正式版请使用该 Release 附带的源码包，而不是直接用 `main` 替换现有程序。
 
-Runtime directories created on first start: `db/` (SQLite), `uploads/`, `logs/`.
+## 核心功能
 
-## Architecture
-
-A modular monolith. Each domain under `internal/modules/<name>/` is a vertical slice with its
-own layers:
-
-| Layer | Holds | May import |
+| 能力 | 说明 | 源码入口 |
 | --- | --- | --- |
-| `domain/` | entities, value objects, business invariants | nothing from the other layers |
-| `application/` | use cases, port interfaces | `domain`, `contract` |
-| `infrastructure/` | GORM stores, gateways, queue adapters | `domain`, `application` ports |
-| `transport/` | HTTP handlers, presenters | `application` contracts |
-| `contract/` | port interfaces the application layer depends on, and the module's public surface for other modules | — |
+| 商品与库存 | 分类、商品、SKU、价格与卡密库存管理 | [商品目录](internal/modules/catalog/) · [卡密](internal/modules/cardsecret/) |
+| 订单与交付 | 用户 / 游客订单、自动与人工交付、订单查询 | [订单](internal/modules/order/) · [交付](internal/modules/fulfillment/) |
+| 支付与钱包 | 支付渠道适配、回调处理、余额与充值 | [支付](internal/modules/payment/) · [钱包](internal/modules/wallet/) |
+| 商城与内容 | 用户商城、模板切换、公告、文章与媒体管理 | [商城模板](frontend/user/src/templates/) · [内容](internal/modules/content/) |
+| 账户与权限 | 用户 / 管理员认证、RBAC、TOTP 双因素认证 | [权限模型](internal/authz/) · [账户认证](internal/modules/identity/) |
+| 对接与分销 | 上游商品与订单对接、渠道 API、分销站点管理 | [上游](internal/modules/upstreamapi/) · [渠道](internal/modules/channelapi/) · [分销](internal/modules/reseller/) |
 
-**These rules are enforced by tests, not convention.** `internal/architecture/` parses every
-import in the tree and fails the build on violations. The main ones:
+功能可用性取决于配置、权限与外部服务；支付、邮件及第三方身份验证需要运营者自行配置和验收。这不是无漏洞或外部服务可用性的保证。
 
-- `domain` must not reach into `application`, `infrastructure`, or `transport`
-- `application` must not import Gin or asynq — no transport libraries in use cases
-- only a module's `infrastructure/gormstore` adapter may import GORM
-- `transport` depends on application contracts, never on concrete stores
-- `internal/shared` stays free of modules, GORM, Gin, and asynq
-- `internal/platform` must not depend on business modules
+## 快速开始
 
-Run them with the rest of the suite: `go test ./internal/architecture/...`
+### 已有 XSHOP 正式站：使用后台升级
 
-Modules never import each other's internals — they talk through `contract/`, and the wiring
-lives in `internal/bootstrap/<module>/`.
+已接入正式签名升级通道的站点，由**超级管理员**在后台检查更新、下载并确认应用，再按提示重启。先阅读 [正式升级与数据边界](docs/UPGRADE.md)，不要使用上游安装脚本覆盖定制程序。
 
-### RBAC
+### 新部署 / 开发：从本仓库源码构建
 
-Every `/api/v1/admin/...` route passes through Casbin. The permission catalog is generated
-from the live route table, but the **built-in roles are hand-maintained** in
-`internal/authz/bootstrap.go`. Adding an admin route without adding it to a role seed leaves
-that route reachable only by the super admin. `internal/app/httpserver/rbac_coverage_test.go`
-checks that every registered route is covered.
+仓库没有 XSHOP 专用一键安装器。新安装需准备 Go **1.26.8**、Node **24.21.x**、pnpm **10.34.6**，并自行配置服务、反向代理、TLS 与持久化目录。
 
-## Build Tags
-
-| Tag | Effect |
-| --- | --- |
-| *(none)* | API only. No SPAs mounted — the default for local development. |
-| `fullstack` | Embeds `internal/web/dist/{admin,user}` into the binary via `go:embed`. |
-| `release` | Production behavior for outbound URL building. |
-
-`go:embed all:dist/admin all:dist/user` requires **both** directories to exist, so a
-`fullstack` build fails outright if the frontends were not built first. A plain `go build`
-does not compile `embed_fullstack.go` — after touching `internal/web/`, verify with
-`go build -tags release,fullstack ./cmd/server`.
-
-## Run Modes
-
-```bash
-./dujiao-next                 # all    — HTTP server + background worker (default)
-./dujiao-next -mode api       # HTTP server only
-./dujiao-next -mode worker    # background worker only
-```
-
-Operator subcommands ship in the same binary, so a container needs no extra tooling:
-
-```bash
-./dujiao-next admin list-admins
-./dujiao-next admin reset-password
-./dujiao-next admin reset-2fa
-```
-
-## Frontend Notes
-
-Two independent SPAs, both built with Vite and embedded at release time.
-
-**Mount points.** The storefront is served at `/`; the admin panel at `web.admin_path`
-(default `/admin`). `/api`, `/uploads`, and `/health` are reserved prefixes — an unmatched
-path under them returns 404 instead of falling through to the SPA shell. Adding a new
-top-level backend prefix means updating `reservedPaths` in `internal/web/handler.go`.
-
-**The admin base path is resolved at runtime, not at build time.** Since `web.admin_path` is
-configurable, `pnpm run build:fullstack` only injects a `<base href="__DJ_ADMIN_BASE__/">`
-placeholder, which the server rewrites on startup. Consequences for admin code:
-
-- native `<a href>` and `window.location` navigation must go through `adminUrl()` in
-  `src/utils/adminBase.ts`
-- `<router-link :to>` and `router.push()` must **not** — vue-router already carries the base,
-  and prefixing again yields `/admin/admin/...`
-
-**Storefront templates.** The customer frontend ships more than one look, selected by the
-`storefront_template` site setting (`classic`, `vault`). Template pages live in
-`src/templates/<name>/` and fall back to `src/views/` when a page has no template-specific
-version; see `src/templates/registry.ts`. Append `?template=vault` to preview one locally.
-
-**i18n.** Both frontends and all API responses are localized — Simplified Chinese, Traditional
-Chinese, and English. Do not hard-code user-facing strings on either side.
-
-## 上游部署参考（不是 XSHOP 安装方式）
-
-> 以下命令下载或运行的是上游 Dujiao-Next，不会安装本仓库的 XSHOP 定制源码。需要 XSHOP 时，请使用下方源码开发与构建说明。
-
-### Official one-click installer (Ubuntu / Debian)
-
-On a fresh Ubuntu 22.04+ or Debian 12+ server, download and run the official
-interactive installer:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/dujiao-next/dujiao-next/main/scripts/dujiao-next-manager.sh \
-  -o /tmp/dujiao-next-manager.sh
-sudo bash /tmp/dujiao-next-manager.sh install
-```
-
-The installer deploys the release binary with systemd, an isolated local Redis,
-Nginx, SQLite, and a Let's Encrypt certificate. After installation, reopen the
-management menu with:
-
-```bash
-sudo dujiao-next-manager
-```
-
-Common automation-friendly commands are also available:
-
-```bash
-sudo dujiao-next-manager status
-sudo dujiao-next-manager logs app
-sudo dujiao-next-manager restart
-sudo dujiao-next-manager configure-domain
-sudo dujiao-next-manager configure-admin-path
-sudo dujiao-next-manager renew-cert
-sudo dujiao-next-manager admin-reset-password
-sudo dujiao-next-manager admin-reset-2fa
-sudo dujiao-next-manager uninstall
-```
-
-The first release supports a single non-wildcard domain on Ubuntu/Debian only.
-It does not adopt an existing manual installation. If SMTP is skipped, configure
-it in the admin panel before enabling email-verification registration. Application
-data lives in `/opt/dujiao-next`; installer state is stored in
-`/etc/dujiao-next/install-state.json`. TLS failures leave only the ACME challenge
-endpoint enabled, and `install` can be rerun after DNS or firewall repair. Safe
-uninstall creates and verifies a `0600` recovery archive under
-`/var/backups/dujiao-next` before deleting managed data.
-
-### Manual binary installation
-
-Download the latest `dujiao-next_*.tar.gz` from [Releases](https://github.com/dujiao-next/dujiao-next/releases):
-
-```bash
-tar -xzf dujiao-next_*.tar.gz
+```sh
+git clone https://github.com/17sho/XSHOP.git
+cd XSHOP
 cp config.yml.example config.yml
-# edit config.yml: set jwt.secret, user_jwt.secret, and web.admin_path
+# 编辑 config.yml：设置独立 JWT 密钥、数据库及后台路径；勿提交真实配置。
+corepack enable
+(cd frontend/admin && pnpm install --frozen-lockfile && pnpm run build:fullstack)
+(cd frontend/user && pnpm install --frozen-lockfile && pnpm run build)
+mkdir -p internal/web/dist
+cp -R frontend/admin/dist internal/web/dist/admin
+cp -R frontend/user/dist internal/web/dist/user
+go build -tags release,fullstack -o dujiao-next ./cmd/server
 ./dujiao-next
 ```
 
-Full instructions: https://dujiao-next.com/deploy/
+上述命令面向全新 checkout，构建的是默认分支快照，不会生成正式签名升级包。管理后台必须使用 `build:fullstack`，不能用普通 `build` 代替。依赖安装需要网络；SQLite、上传文件与日志目录需要持久化。
 
-Or with Docker:
+详见 [开发、构建与部署参考](docs/DEVELOPMENT.md)。仓库 [Dockerfile](Dockerfile) 也提供本地全栈镜像构建路径；上游镜像、安装器和更新包**不是 XSHOP 定制版本**。
 
-```bash
-docker run -d -p 8080:8080 -v $PWD/config.yml:/app/config.yml:ro dujiaonext/dujiao-next:latest
+## 正式升级与数据保留
+
+- 正式包仅交付应用代码及内嵌前后台资源，不携带测试站数据库、配置、Redis、worker/service、会员规则、商品库存或业务记录。
+- 保留正式站自己的用户、订单、余额、卡密、上传文件、密钥及运营设置；测试站的验证码设置不会复制到正式站。
+- 发布到 GitHub 不等于已升级站点；必须由管理员主动确认。升级前保留程序、配置、数据库和上传文件备份，并检查版本兼容性。
+- 保持生产 / 测试通道隔离、签名校验与单调递增 sequence；不要清空 journal 或重置 high-water。程序回退不恢复业务数据库，也不降低 high-water。
+
+**[阅读完整升级说明 →](docs/UPGRADE.md)**
+
+## 文档导航
+
+| 你想做什么 | 从这里开始 |
+| --- | --- |
+| 找到全部文档与历史说明 | [文档索引](docs/README.md) |
+| 本地开发、全栈构建、了解目录结构 | [开发与构建](docs/DEVELOPMENT.md) |
+| 获取正式版、确认升级步骤与数据边界 | [正式升级](docs/UPGRADE.md) · [Release 记录](https://github.com/17sho/XSHOP/releases) |
+| 了解源码去身份化范围 | [源码隐私说明](XSHOP_SOURCE_PRIVACY.md) |
+| 查看签名协议、依赖与交付安全说明 | [安全文档入口](docs/README.md#安全与协议) |
+
+## 技术栈与目录
+
+**后端**：Go · Gin · GORM · SQLite / PostgreSQL · Casbin · Redis / asynq（异步任务）
+
+**前端**：Vue 3 · TypeScript · Vite · Tailwind CSS · pnpm
+
+**交付**：两个独立 SPA，全栈构建后通过 `go:embed` 内嵌到同一程序。
+
+```text
+cmd/                 应用与工具入口
+internal/modules/    业务模块：领域、应用、契约与适配器
+internal/bootstrap/  模块接线
+internal/authz/      RBAC 权限模型
+internal/web/        前后台内嵌资源与路由
+internal/architecture/ 架构约束测试
+frontend/admin/      管理后台
+frontend/user/       用户商城
+deploy/              部署参考模板
+scripts/             构建、安全检查与候选包工具
+source-workflows/    未启用的工作流参考源码
+docs/                文档导航与使用说明
 ```
 
-## Quick Start (Develop)
+## 来源、许可证与责任边界
 
-Run the backend and the two frontends separately for hot reload:
+本项目基于 [Dujiao-Next](https://github.com/dujiao-next/dujiao-next)，保留原项目版权声明与 **GNU GPLv3** 许可证，具体条款以 [LICENSE](LICENSE) 为准。XSHOP 是定制版本，不代表上游项目或其赞助商。
 
-```bash
-go mod tidy && go run ./cmd/server   # :8080 — API only, no SPAs mounted
+发布、再分发与修改时请遵守许可证及对应源码义务。上游文档可作为技术参考，但不代表 XSHOP 的部署或升级合同。运营者应自行核实商品与交易的合法性，配置访问权限、支付与邮件服务，做好备份和安全维护。
 
-cd frontend/user  && pnpm install && pnpm run dev   # :5173
-cd frontend/admin && pnpm install && pnpm run dev   # :5174
-```
-
-Both dev servers proxy `/api`, `/uploads`, `/sitemap.xml`, and `/robots.txt` to
-`localhost:8080`. In production everything is same-origin, so these proxies are a
-development-only concern.
-
-> Use `pnpm` via corepack. `pnpm --dir X` does not read the `packageManager` field of the
-> target directory and will pick the wrong version — `cd` into the package first.
-
-## Building the Full-Stack Binary
-
-```bash
-goreleaser build --snapshot --single-target --clean
-```
-
-This builds both frontends, embeds them, and compiles with `-tags fullstack` — the same path
-CI uses for releases. The manual equivalent:
-
-```bash
-(cd frontend/admin && pnpm run build:fullstack)   # injects the <base> placeholder
-(cd frontend/user  && pnpm run build)
-rm -rf internal/web/dist && mkdir -p internal/web/dist
-cp -r frontend/admin/dist internal/web/dist/admin
-cp -r frontend/user/dist  internal/web/dist/user
-go build -tags release,fullstack -o dujiao-next ./cmd/server
-```
-
-Note that admin uses `build:fullstack`, not `build`. Plain `build` produces a bundle pinned to
-`/`, which silently breaks a custom `web.admin_path`.
-
-## Testing
-
-```bash
-go test ./...                              # full suite
-go test ./internal/architecture/...        # dependency and layering guards
-go test ./internal/modules/order/...       # one module
-
-cd frontend/user  && pnpm run build        # includes vue-tsc type checking
-cd frontend/admin && pnpm run build
-```
-
-Health check endpoint: `GET /health`
-
-## Notes on Data Access
-
-SQLite runs with `MaxOpenConns=1`. A store opens a transaction through
-`WithinTransaction(func(tx contract.Transaction) error)`, and every query inside the closure
-must go through that `tx` handle or a store bound to it via `WithTx(tx)`. Reaching for the
-global DB handle instead asks for a second connection that will never be granted, deadlocking
-the process — including indirectly, by calling a service that queries on its own. Read any
-settings you need *before* opening the transaction, and keep outbound HTTP calls (payment
-gateways and the like) outside it.
-
-## Online Documentation
-
-- https://dujiao-next.com
+`source-workflows/` 仅保留工作流源码作为参考，未作为 GitHub Actions 启用；不要未经审核启用自动发布或部署。
