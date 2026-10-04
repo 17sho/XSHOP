@@ -135,25 +135,25 @@ func NormalizeCaptchaSetting(setting CaptchaSetting) CaptchaSetting {
 	if setting.Image.CharacterType != "alphanumeric" {
 		setting.Image.CharacterType = "digits"
 	}
-	if setting.Image.Length < 6 || setting.Image.Length > 8 {
+	if setting.Image.Length < 4 || setting.Image.Length > 8 {
 		setting.Image.Length = 6
 	}
-	if setting.Image.Width < 100 {
+	if setting.Image.Width < 100 || setting.Image.Width > 600 {
 		setting.Image.Width = 240
 	}
-	if setting.Image.Height < 40 {
+	if setting.Image.Height < 40 || setting.Image.Height > 200 {
 		setting.Image.Height = 80
 	}
-	if setting.Image.NoiseCount < 0 {
+	if setting.Image.NoiseCount < 0 || setting.Image.NoiseCount > 20 {
 		setting.Image.NoiseCount = 2
 	}
-	if setting.Image.ShowLine < 0 {
+	if setting.Image.ShowLine < 0 || setting.Image.ShowLine & ^14 != 0 {
 		setting.Image.ShowLine = 2
 	}
 	if setting.Image.ExpireSeconds < 30 || setting.Image.ExpireSeconds > 3600 {
 		setting.Image.ExpireSeconds = 300
 	}
-	if setting.Image.MaxStore < 100 {
+	if setting.Image.MaxStore < 100 || setting.Image.MaxStore > 100000 {
 		setting.Image.MaxStore = 10240
 	}
 
@@ -172,7 +172,7 @@ func NormalizeCaptchaSetting(setting CaptchaSetting) CaptchaSetting {
 
 // ValidateCaptchaSetting 校验验证码配置。
 func ValidateCaptchaSetting(setting CaptchaSetting) error {
-	normalized := NormalizeCaptchaSetting(setting)
+	normalized := setting
 
 	switch normalized.Provider {
 	case constants.CaptchaProviderNone, constants.CaptchaProviderImage, constants.CaptchaProviderTurnstile:
@@ -193,10 +193,22 @@ func ValidateCaptchaSetting(setting CaptchaSetting) error {
 		}
 	}
 
-	if normalized.Image.Length < 6 || normalized.Image.Length > 8 {
-		return fmt.Errorf("%w: 图片验证码长度需在 6-8 之间", ErrCaptchaConfigInvalid)
+	if normalized.Image.CharacterType != "digits" && normalized.Image.CharacterType != "alphanumeric" {
+		return fmt.Errorf("%w: 图片验证码字符类型无效", ErrCaptchaConfigInvalid)
 	}
-	if normalized.Image.Width < 100 || normalized.Image.Height < 40 {
+	if normalized.Image.NoiseCount < 0 || normalized.Image.NoiseCount > 20 {
+		return fmt.Errorf("%w: 干扰字符数量需在 0-20 之间", ErrCaptchaConfigInvalid)
+	}
+	if normalized.Image.ShowLine < 0 || normalized.Image.ShowLine & ^14 != 0 {
+		return fmt.Errorf("%w: 干扰线需为 2/4/8 的位掩码组合", ErrCaptchaConfigInvalid)
+	}
+	if normalized.Image.MaxStore < 100 || normalized.Image.MaxStore > 100000 {
+		return fmt.Errorf("%w: 最大存储数需在 100-100000 之间", ErrCaptchaConfigInvalid)
+	}
+	if normalized.Image.Length < 4 || normalized.Image.Length > 8 {
+		return fmt.Errorf("%w: 图片验证码长度需在 4-8 之间", ErrCaptchaConfigInvalid)
+	}
+	if normalized.Image.Width < 100 || normalized.Image.Width > 600 || normalized.Image.Height < 40 || normalized.Image.Height > 200 {
 		return fmt.Errorf("%w: 图片验证码宽高不合法", ErrCaptchaConfigInvalid)
 	}
 	if normalized.Image.ExpireSeconds < 30 || normalized.Image.ExpireSeconds > 3600 {
@@ -389,7 +401,7 @@ func DecodeCaptchaSetting(raw jsonmap.JSON, fallback CaptchaSetting) CaptchaSett
 
 // ApplyCaptchaSettingPatch 把补丁应用到当前验证码配置并完成校验。
 func ApplyCaptchaSettingPatch(current CaptchaSetting, patch CaptchaSettingPatch) (CaptchaSetting, error) {
-	next := current
+	next := NormalizeCaptchaSetting(current)
 	if patch.Provider != nil {
 		next.Provider = strings.ToLower(strings.TrimSpace(*patch.Provider))
 	}
@@ -457,11 +469,10 @@ func ApplyCaptchaSettingPatch(current CaptchaSetting, patch CaptchaSettingPatch)
 		}
 	}
 
-	normalized := NormalizeCaptchaSetting(next)
-	if err := ValidateCaptchaSetting(normalized); err != nil {
+	if err := ValidateCaptchaSetting(next); err != nil {
 		return CaptchaSetting{}, err
 	}
-	return normalized, nil
+	return NormalizeCaptchaSetting(next), nil
 }
 
 func (s CaptchaSceneSetting) anyEnabled() bool {

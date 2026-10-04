@@ -15,6 +15,8 @@ test(`${path}: tabs preserve inputs without custom local animation across unrela
   const Button = { setup: (_: any, { slots }: any) => () => vue.h('button', slots.default?.()) }
   const Input = { props: ['modelValue'], setup: (props: any) => () => vue.h('input', { value: props.modelValue }) }
   const Guest = loadSource(path, {
+    '../components/captcha/ImageCaptcha.vue': { default: wrapper },
+    '../components/captcha/TurnstileCaptcha.vue': { default: wrapper },
     'vue-i18n': { useI18n: () => ({ t: (key: string) => key }) },
     '../composables/useGuestOrders': { useGuestOrders: () => state },
     '@/components/ui/alert': { Alert: wrapper, AlertDescription: wrapper }, '@/components/ui/badge': { Badge: wrapper }, '@/components/ui/button': { Button, buttonVariants: () => '' }, '@/components/ui/input': { Input },

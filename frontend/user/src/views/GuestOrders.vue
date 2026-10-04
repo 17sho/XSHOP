@@ -13,7 +13,12 @@
         <div v-if="activeTab === 'credentials'" class="mt-6 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
           <Input v-model="email" type="email" class="h-11" :placeholder="t('guestOrders.emailPlaceholder')" />
           <Input v-model="orderPassword" type="password" class="h-11" :placeholder="t('guestOrders.passwordPlaceholder')" />
-          <Button class="h-11" :disabled="loading" @click="searchByCredentials"><Search />{{ t('guestOrders.search') }}</Button>
+          <Input v-model="orderNo" type="text" class="h-11 sm:col-span-3" :aria-label="t('guestOrders.orderNoPlaceholder')" :placeholder="t('guestOrders.orderNoPlaceholder')" />
+          <div v-if="captchaEnabled" class="min-w-0 sm:col-span-3">
+            <ImageCaptcha v-if="captchaProvider === 'image'" :ref="(el: any) => imageCaptchaRef = el" v-model="captchaPayload" :disabled="loading" @config-stale="handleCaptchaConfigStale" />
+            <TurnstileCaptcha v-else-if="captchaProvider === 'turnstile'" :ref="(el: any) => turnstileRef = el" v-model="turnstileToken" :site-key="turnstileSiteKey" />
+          </div>
+          <Button class="h-11 sm:col-span-3" :disabled="loading" @click="searchByCredentials"><Search />{{ t('guestOrders.search') }}</Button>
         </div>
         <Alert v-if="error" variant="destructive" class="mt-4"><AlertDescription>{{ error }}</AlertDescription></Alert>
         <div v-if="orders.length === 0 && !loading" class="mt-6 flex min-h-52 flex-col items-center justify-center rounded-xl border border-dashed text-center text-muted-foreground">
@@ -43,13 +48,16 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import PaginationNav from '../components/PaginationNav.vue'
 import { useGuestOrders } from '../composables/useGuestOrders'
+import ImageCaptcha from '../components/captcha/ImageCaptcha.vue'
+import TurnstileCaptcha from '../components/captcha/TurnstileCaptcha.vue'
 
 const { t } = useI18n()
 const tabs = computed(() => [
   { key: 'browser' as const, label: t('guestOrders.tabs.browser') },
   { key: 'credentials' as const, label: t('guestOrders.tabs.credentials') },
 ])
-const { activeTab, setActiveTab, email, orderPassword, loading, error, orders, pagination,
+const { activeTab, setActiveTab, email, orderPassword, orderNo, loading, error, orders, pagination,
+  captchaEnabled, captchaProvider, captchaPayload, turnstileToken, turnstileSiteKey, imageCaptchaRef, turnstileRef, handleCaptchaConfigStale,
   searchByCredentials, emptyMessage, changePage, statusLabel, statusVariant,
   formatMoney, formatDate } = useGuestOrders()
 </script>

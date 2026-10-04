@@ -1624,6 +1624,7 @@
     "subtitle": "输入邮箱与订单密码查看历史订单",
     "emailPlaceholder": "邮箱",
     "passwordPlaceholder": "订单密码",
+    "orderNoPlaceholder": "订单号（可选）",
     "savedHint": "已保存邮箱：{email}",
     "clearSaved": "清除已保存信息",
     "tip": "请输入下单时的邮箱与订单密码",

@@ -7,7 +7,7 @@ import (
 )
 
 func TestNormalizeNumericCaptchaLengthUsesSecureMinimum(t *testing.T) {
-	for _, length := range []int{0, 4, 5} {
+	for _, length := range []int{0, 3, 9} {
 		setting := NormalizeCaptchaSetting(CaptchaSetting{
 			Image: CaptchaImageSetting{Length: length},
 		})
@@ -16,7 +16,7 @@ func TestNormalizeNumericCaptchaLengthUsesSecureMinimum(t *testing.T) {
 		}
 	}
 
-	for _, length := range []int{6, 7, 8} {
+	for _, length := range []int{4, 5, 6, 7, 8} {
 		setting := NormalizeCaptchaSetting(CaptchaSetting{
 			Image: CaptchaImageSetting{Length: length},
 		})

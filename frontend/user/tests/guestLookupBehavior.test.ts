@@ -1,12 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { vue, dom, loadSource, settle } from './helpers/motion17CHarness.ts'
 
 const auth = { email: 'fixture@example.invalid', order_password: 'fixture-password' }
 const response = (orderNo = 'ORDER-1', page = 1, totalPage = 3) => ({ data: {
   data: [{ order_no: orderNo }], pagination: { page, page_size: 20, total: 41, total_page: totalPage },
 } })
-function setup(saved = false) {
+function setup(saved = false, captcha: any = { provider: 'none' }) {
   dom.window.sessionStorage.clear(); dom.window.localStorage.clear()
   if (saved) dom.window.sessionStorage.setItem('guest_order_auth', JSON.stringify(auth))
   const calls: any[] = []
@@ -14,6 +15,7 @@ function setup(saved = false) {
     get: (url: string, options: any) => new Promise((resolve, reject) => calls.push({ url, options, resolve, reject })),
   } } }).guestOrderAPI
   const { useGuestOrders } = loadSource('composables/useGuestOrders.ts', {
+    '../stores/app': { useAppStore: () => ({ config: { captcha }, loadConfig: async () => {} }) },
     'vue-i18n': { useI18n: () => ({ t: (key: string) => key }) }, '../api': { guestOrderAPI },
   })
   // Exercise the actual debounce implementation without wall-clock sleeps.
@@ -42,12 +44,33 @@ test('email lookup sends only pagination and Guest authorization, never an order
     call.resolve(response()); await search
     assert.equal(h.g.orders.value[0].order_no, 'ORDER-1')
     assert.deepEqual(JSON.parse(dom.window.sessionStorage.getItem('guest_order_auth')!), auth)
-    assert.equal('orderNo' in h.g, false)
+    assert.equal(h.g.orderNo.value, '')
     assert.equal('searchByOrderNo' in h.g, false)
   } finally { h.close() }
 })
 
-test('browser lookup includes cookies, loads saved credentials, and paginates without credentials', async () => {
+test('optional order filter trims exact identity, resets search page, persists on pagination, and clears with saved auth', async () => {
+  const h = setup(true)
+  try {
+    h.g.setActiveTab('credentials'); h.g.orderNo.value = '  EXACT /?订单  '
+    const search = h.g.searchByCredentials(); h.flush()
+    assert.deepEqual(h.calls[1].options.params, { order_no: 'EXACT /?订单', page: 1, page_size: 20 })
+    h.calls[1].resolve(response()); await search
+    h.g.orderNo.value = 'UNSUBMITTED'
+    h.g.changePage(2); h.flush()
+    assert.deepEqual(h.calls[2].options.params, { order_no: 'EXACT /?订单', page: 2, page_size: 20 })
+    h.calls[2].resolve(response('PAGE-2', 2)); await settle()
+    h.g.orderNo.value = '   '
+    const all = h.g.searchByCredentials(); h.flush()
+    assert.deepEqual(h.calls[3].options.params, { page: 1, page_size: 20 })
+    h.calls[3].resolve(response()); await all
+    assert.deepEqual(JSON.parse(dom.window.sessionStorage.getItem('guest_order_auth')!), auth)
+    h.g.orderNo.value = 'FILTER'; h.g.clearSaved()
+    assert.equal(h.g.orderNo.value, ''); assert.equal(h.g.pagination.value.page, 1)
+  } finally { h.close() }
+})
+
+ test('browser lookup includes cookies, loads saved credentials, and paginates without credentials', async () => {
   const h = setup(true)
   try {
     assert.equal(h.g.activeTab.value, 'browser')
@@ -114,6 +137,54 @@ for (const mode of ['browser', 'credentials']) test(`${mode} lookup preserves em
     h.calls[index + 2].reject({}); await settle()
     assert.equal(h.g.error.value, mode === 'browser' ? 'guestOrders.errors.browserFailed' : 'guestOrders.errors.searchFailed')
   } finally { h.close() }
+})
+
+for (const email of ['123', 'fixture@', '   ']) test(`invalid lookup email ${JSON.stringify(email)} does not send a request`, async () => {
+  const h = setup(true)
+  try {
+    h.g.setActiveTab('credentials'); h.g.email.value = email
+    void h.g.searchByCredentials(); h.flush()
+    assert.equal(h.calls.length, 1)
+    assert.ok(h.g.error.value)
+  } finally { h.close() }
+})
+
+test('image lookup blocks missing challenge before request', async () => {
+  const h = setup(true, { provider: 'image', scenes: { guest_create_order: true } })
+  try {
+    h.g.setActiveTab('credentials'); void h.g.searchByCredentials(); h.flush()
+    assert.equal(h.calls.length, 1)
+    assert.equal(h.g.error.value, 'auth.common.captchaRequired')
+  } finally { h.close() }
+})
+
+for (const provider of ['image', 'turnstile']) test(`${provider} lookup sends challenge in headers, resets after query failure/success, and requires fresh pagination challenge`, async () => {
+  const h = setup(true, { provider, scenes: { guest_create_order: true }, turnstile: { site_key: 'fixture' } })
+  let refreshed = 0
+  try {
+    h.g.imageCaptchaRef.value = { refresh: async () => { refreshed++ } }
+    h.g.turnstileRef.value = { reset: () => { refreshed++ } }
+    h.g.setActiveTab('credentials'); h.g.email.value = '  Fixture@Example.invalid  '
+    if (provider === 'image') h.g.captchaPayload.value = { captcha_id: 'fixture-id', captcha_code: '123456' }
+    else h.g.turnstileToken.value = 'fixture-token'
+    const pending = h.g.searchByCredentials(); h.flush()
+    assert.deepEqual(h.calls[1].options.params, { page: 1, page_size: 20 })
+    assert.equal(h.calls[1].options.headers[provider === 'image' ? 'X-Captcha-Code' : 'X-Turnstile-Token'], provider === 'image' ? '123456' : 'fixture-token')
+    h.calls[1].reject(new Error('lookup failed')); await pending
+    assert.equal(refreshed, 1); assert.deepEqual(h.g.captchaPayload.value, {}); assert.equal(h.g.turnstileToken.value, '')
+    h.g.changePage(1); h.flush(); assert.equal(h.calls.length, 2)
+    if (provider === 'image') h.g.captchaPayload.value = { captcha_id: 'new-id', captcha_code: '654321' }
+    else h.g.turnstileToken.value = 'new-token'
+    const retry = h.g.searchByCredentials(); h.flush(); h.calls[2].resolve(response()); await retry
+    assert.equal(refreshed, 2); assert.equal(h.g.email.value, 'fixture@example.invalid')
+  } finally { h.close() }
+})
+
+test('shared classic/vault credentials view renders captcha in a full-width responsive row', () => {
+  const view = readFileSync('src/views/GuestOrders.vue', 'utf8')
+  assert.match(view, /ImageCaptcha/); assert.match(view, /TurnstileCaptcha/)
+  assert.match(view, /sm:col-span-3/)
+  assert.match(readFileSync('src/templates/vault/GuestOrders.vue', 'utf8'), /<GuestOrders/)
 })
 
 test('generic guest API still accepts order filters and exact encoded detail/payment order identities', async () => {

@@ -49,6 +49,21 @@ const emit = defineEmits<{
 }>()
 
 const submitting = ref(false)
+const lineOptions = [
+  { bit: 2, label: 'admin.settings.captcha.image.hollowLine' },
+  { bit: 4, label: 'admin.settings.captcha.image.slimeLine' },
+  { bit: 8, label: 'admin.settings.captcha.image.sineLine' },
+]
+const toggleLine = (bit: number, enabled: boolean) => {
+  form.image.show_line = enabled ? form.image.show_line | bit : form.image.show_line & ~bit
+}
+const validImage = () => {
+  const bounds = { length: [4, 8], width: [100, 600], height: [40, 200], noise_count: [0, 20], expire_seconds: [30, 3600], max_store: [100, 100000] }
+  return Object.entries(bounds).every(([key, [min, max]]) => {
+    const n = Number(form.image[key as keyof typeof form.image])
+    return Number.isInteger(n) && n >= min! && n <= max!
+  }) && Number.isInteger(form.image.show_line) && form.image.show_line >= 0 && (form.image.show_line & ~14) === 0
+}
 
 const form = reactive({
   provider: 'none',
@@ -104,6 +119,10 @@ const notifyErrorIfNeeded = (err: unknown, fallback: string) => {
 
 const save = async () => {
   if (!props.loaded || submitting.value) return
+  if (!validImage()) {
+    notifyError(t('admin.settings.captcha.image.invalidParameters'))
+    return
+  }
   submitting.value = true
   try {
     const payload: Record<string, unknown> = {
@@ -227,15 +246,15 @@ defineExpose({ save, submitting })
 			</div>
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.captcha.image.length') }}</label>
-              <Input v-model.number="form.image.length" type="number" min="6" max="8" />
+              <Input v-model.number="form.image.length" type="number" min="4" max="8" />
             </div>
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.captcha.image.width') }}</label>
-              <Input v-model.number="form.image.width" type="number" min="100" />
+              <Input v-model.number="form.image.width" type="number" min="100" max="600" />
             </div>
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.captcha.image.height') }}</label>
-              <Input v-model.number="form.image.height" type="number" min="40" />
+              <Input v-model.number="form.image.height" type="number" min="40" max="200" />
             </div>
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.captcha.image.expireSeconds') }}</label>
@@ -243,15 +262,20 @@ defineExpose({ save, submitting })
             </div>
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.captcha.image.noiseCount') }}</label>
-              <Input v-model.number="form.image.noise_count" type="number" min="0" />
+              <Input v-model.number="form.image.noise_count" type="number" min="0" max="20" />
             </div>
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.captcha.image.showLine') }}</label>
-              <Input v-model.number="form.image.show_line" type="number" min="0" />
+              <div class="space-y-2">
+                <label v-for="line in lineOptions" :key="line.bit" class="flex items-center gap-2 text-sm">
+                  <input type="checkbox" :checked="!!(form.image.show_line & line.bit)" @change="toggleLine(line.bit, ($event.target as HTMLInputElement).checked)" />
+                  {{ t(line.label) }}
+                </label>
+              </div>
             </div>
             <div class="space-y-2">
               <label class="text-xs font-medium text-muted-foreground">{{ t('admin.settings.captcha.image.maxStore') }}</label>
-              <Input v-model.number="form.image.max_store" type="number" min="100" />
+              <Input v-model.number="form.image.max_store" type="number" min="100" max="100000" />
             </div>
           </div>
         </div>

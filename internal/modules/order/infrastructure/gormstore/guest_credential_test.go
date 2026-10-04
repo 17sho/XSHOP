@@ -403,3 +403,35 @@ func TestBackfillGuestCredentialHashesOnPostgres(t *testing.T) {
 		t.Fatalf("migrated credential should still authenticate, got order=%v err=%v", got, err)
 	}
 }
+
+func TestGuestOrderFilterChildResolvesAuthenticatedScopedParent(t *testing.T) {
+	db := openOrderTenantScopeTestDB(t)
+	repo := New(db, "test-guest-credential-secret-with-32-bytes")
+	tenant := uint(101)
+	parent := seedScopedOrder(t, db, "FILTER-PARENT", 0, "guest@example.com", "code", constants.OrderStatusPaid, &tenant, nil)
+	seedScopedOrder(t, db, "FILTER-CHILD", 0, "guest@example.com", "code", constants.OrderStatusPaid, &tenant, &parent.ID)
+	if _, err := repo.BackfillGuestCredentialHashes(); err != nil {
+		t.Fatal(err)
+	}
+	for _, no := range []string{"FILTER-PARENT", "FILTER-CHILD"} {
+		got, err := repo.GetByOrderNoAndGuestScoped(no, "guest@example.com", "code", ordercontract.TenantScope{ResellerID: &tenant})
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertOrderFound(t, got, parent.OrderNo)
+	}
+	for _, tc := range []struct {
+		email, password string
+		scope           ordercontract.TenantScope
+	}{
+		{"other@example.com", "code", ordercontract.TenantScope{ResellerID: &tenant}},
+		{"guest@example.com", "wrong", ordercontract.TenantScope{ResellerID: &tenant}},
+		{"guest@example.com", "code", ordercontract.TenantScope{}},
+	} {
+		got, err := repo.GetByOrderNoAndGuestScoped("FILTER-CHILD", tc.email, tc.password, tc.scope)
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertOrderMissing(t, got)
+	}
+}

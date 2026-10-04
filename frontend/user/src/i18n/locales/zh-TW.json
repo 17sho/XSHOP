@@ -1667,6 +1667,7 @@
     "subtitle": "輸入信箱與訂單密碼查看歷史訂單",
     "emailPlaceholder": "信箱",
     "passwordPlaceholder": "訂單密碼",
+    "orderNoPlaceholder": "訂單號（可選）",
     "savedHint": "已保存信箱：{email}",
     "clearSaved": "清除已保存資訊",
     "tip": "請輸入下單時的信箱與訂單密碼",

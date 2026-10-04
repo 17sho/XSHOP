@@ -1667,6 +1667,7 @@
     "subtitle": "Enter email and order password to view orders",
     "emailPlaceholder": "Email",
     "passwordPlaceholder": "Order password",
+    "orderNoPlaceholder": "Order number (optional)",
     "savedHint": "Saved email: {email}",
     "clearSaved": "Clear saved info",
     "tip": "Use the email and order password from checkout",

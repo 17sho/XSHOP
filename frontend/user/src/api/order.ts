@@ -62,7 +62,13 @@ export const guestOrderAPI = {
         credentials: 'include',
     }),
     list: (params: GuestAuthInput) => {
-        const request = withGuestAuth(params)
+        const { captcha_payload, ...paramsWithoutCaptcha } = params
+        const request = withGuestAuth(paramsWithoutCaptcha)
+        if (captcha_payload) Object.assign(request.options.headers, {
+            'X-Captcha-ID': captcha_payload.captcha_id || '',
+            'X-Captcha-Code': captcha_payload.captcha_code || '',
+            'X-Turnstile-Token': captcha_payload.turnstile_token || '',
+        })
         return userApi.get('/guest/orders', { ...request.options, params: request.payload })
     },
     detail: (orderNo: string, params: GuestAuthInput, options?: any) => {

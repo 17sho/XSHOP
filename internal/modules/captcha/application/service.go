@@ -1,6 +1,10 @@
 package application
 
 import (
+	"container/list"
+	"crypto/rand"
+	"encoding/hex"
+	"math/big"
 	"strings"
 	"sync"
 	"time"
@@ -103,11 +107,29 @@ func (s *Service) GenerateImageChallenge() (*contract.ImageChallenge, error) {
 		base64Captcha.DefaultEmbeddedFonts,
 		nil,
 	)
-	captcha := base64Captcha.NewCaptcha(driver, store)
-	id, b64s, _, genErr := captcha.Generate()
+	// Generate identifiers and answers with crypto/rand; the dependency uses
+	// math/rand for these. Keep its renderer only, without replacing dependency.
+	idBytes := make([]byte, 24)
+	if _, err := rand.Read(idBytes); err != nil {
+		return nil, err
+	}
+	id := hex.EncodeToString(idBytes)
+	answer := make([]byte, setting.Image.Length)
+	for i := range answer {
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(characterSource))))
+		if err != nil {
+			return nil, err
+		}
+		answer[i] = characterSource[n.Int64()]
+	}
+	item, genErr := driver.DrawCaptcha(string(answer))
 	if genErr != nil {
 		return nil, genErr
 	}
+	if err := store.Set(id, string(answer)); err != nil {
+		return nil, err
+	}
+	b64s := item.EncodeB64string()
 
 	return &contract.ImageChallenge{
 		CaptchaID:   strings.TrimSpace(id),
@@ -160,10 +182,75 @@ func (s *Service) ensureImageStore(setting settingssecurity.CaptchaSetting) base
 	if s.imageStore != nil && s.imageStoreMaxStore == setting.Image.MaxStore && s.imageStoreExpireSec == setting.Image.ExpireSeconds {
 		return s.imageStore
 	}
-	s.imageStore = base64Captcha.NewMemoryStore(setting.Image.MaxStore, time.Duration(setting.Image.ExpireSeconds)*time.Second)
+	s.imageStore = newImageStore(setting.Image.MaxStore, time.Duration(setting.Image.ExpireSeconds)*time.Second, time.Now)
 	s.imageStoreMaxStore = setting.Image.MaxStore
 	s.imageStoreExpireSec = setting.Image.ExpireSeconds
 	return s.imageStore
+}
+
+type imageEntry struct {
+	id, answer string
+	expires    time.Time
+}
+
+// imageStore enforces strict TTL and evicts oldest entries at true capacity.
+// TTL/capacity updates replace this store, invalidating outstanding challenges;
+// presentation/scene changes preserve them. Wrong and correct attempts consume.
+type imageStore struct {
+	mu       sync.Mutex
+	entries  map[string]*list.Element
+	order    *list.List
+	capacity int
+	ttl      time.Duration
+	now      func() time.Time
+}
+
+func newImageStore(capacity int, ttl time.Duration, now func() time.Time) *imageStore {
+	return &imageStore{entries: make(map[string]*list.Element), order: list.New(), capacity: capacity, ttl: ttl, now: now}
+}
+func (s *imageStore) remove(e *list.Element) {
+	delete(s.entries, e.Value.(imageEntry).id)
+	s.order.Remove(e)
+}
+func (s *imageStore) Set(id, answer string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := s.now()
+	for e := s.order.Front(); e != nil; e = s.order.Front() {
+		if now.Before(e.Value.(imageEntry).expires) {
+			break
+		}
+		s.remove(e)
+	}
+	if e := s.entries[id]; e != nil {
+		s.remove(e)
+	}
+	for len(s.entries) >= s.capacity {
+		s.remove(s.order.Front())
+	}
+	s.entries[id] = s.order.PushBack(imageEntry{id: id, answer: answer, expires: now.Add(s.ttl)})
+	return nil
+}
+func (s *imageStore) Get(id string, clear bool) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	e := s.entries[id]
+	if e == nil {
+		return ""
+	}
+	entry := e.Value.(imageEntry)
+	expired := !s.now().Before(entry.expires)
+	if clear || expired {
+		s.remove(e)
+	}
+	if expired {
+		return ""
+	}
+	return entry.answer
+}
+func (s *imageStore) Verify(id, answer string, clear bool) bool {
+	stored := s.Get(id, clear)
+	return stored != "" && strings.EqualFold(stored, strings.TrimSpace(answer))
 }
 
 func (s *Service) getSetting() (settingssecurity.CaptchaSetting, error) {
@@ -172,21 +259,17 @@ func (s *Service) getSetting() (settingssecurity.CaptchaSetting, error) {
 	}
 
 	now := time.Now()
-	s.mu.RLock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if !s.cachedAt.IsZero() && now.Sub(s.cachedAt) <= s.cacheTTL {
-		cached := s.cachedSetting
-		s.mu.RUnlock()
-		return cached, nil
+		return s.cachedSetting, nil
 	}
-	s.mu.RUnlock()
 
 	fallback := s.defaultConfig
 	if s.settingService == nil {
 		setting := settingssecurity.DefaultCaptchaSetting(fallback)
-		s.mu.Lock()
 		s.cachedSetting = setting
 		s.cachedAt = now
-		s.mu.Unlock()
 		return setting, nil
 	}
 
@@ -196,9 +279,7 @@ func (s *Service) getSetting() (settingssecurity.CaptchaSetting, error) {
 	}
 	setting = settingssecurity.NormalizeCaptchaSetting(setting)
 
-	s.mu.Lock()
 	s.cachedSetting = setting
 	s.cachedAt = now
-	s.mu.Unlock()
 	return setting, nil
 }

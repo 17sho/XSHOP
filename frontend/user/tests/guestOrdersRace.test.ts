@@ -9,6 +9,8 @@ function setup() {
   const request = () => { const d = deferred(); pending.push(d); return d.promise }
   let unmount = () => {}
   const { useGuestOrders } = evaluate('src/composables/useGuestOrders.ts', ['useGuestOrders'], {
+    useAppStore: () => ({ config: { captcha: { provider: 'none' } }, loadConfig: async () => {} }),
+    useFormValidation: () => ({ emailRule: () => (value: string) => value.includes('@') ? null : 'error.email_invalid' }),
     useI18n: () => ({ t: (s: string) => s }), guestOrderAPI: {
       browserOrders: () => { calls.push('browser'); return request() },
       list: () => { calls.push('credentials'); return request() },

@@ -390,12 +390,17 @@ func (r *Store) GetByIDAndGuestScoped(id uint, email, password string, scope ord
 func (r *Store) GetByOrderNoAndGuestScoped(orderNo, email, password string, scope ordercontract.TenantScope) (*orderdomain.Order, error) {
 	var order orderdomain.Order
 	query := r.withChildren(r.db)
-	query = applyTenantScope(query.Where("order_no = ? AND user_id = 0 AND guest_email = ? AND guest_password = ? AND parent_id IS NULL", orderNo, email, r.hashGuestCredential(email, password)), scope)
+	query = applyTenantScope(query.Where("order_no = ? AND user_id = 0 AND guest_email = ? AND guest_password = ?", orderNo, email, r.hashGuestCredential(email, password)), scope)
 	if err := query.First(&order).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, err
+	}
+	// Lists and detail routes use the parent identity. Authenticate and scope
+	// both the supplied child and its parent; never resolve by order number alone.
+	if order.ParentID != nil {
+		return r.GetByIDAndGuestScoped(*order.ParentID, email, password, scope)
 	}
 	return &order, nil
 }

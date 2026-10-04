@@ -5,8 +5,12 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"net/mail"
 	"strings"
 
+	"github.com/dujiao-next/internal/constants"
+	captcha "github.com/dujiao-next/internal/modules/captcha/contract"
+	captchahttp "github.com/dujiao-next/internal/modules/captcha/transport/http"
 	orderdomain "github.com/dujiao-next/internal/modules/order/domain"
 
 	orderpresenter "github.com/dujiao-next/internal/modules/order/transport/presenter"
@@ -43,13 +47,22 @@ type GuestHandler struct {
 	orders   GuestOrderQuery
 	payments PaymentChannelPolicy
 	refunds  RefundRecordDirectory
+	captcha  GuestLookupCaptcha
 }
 
-func NewGuestHandler(orders GuestOrderQuery, payments PaymentChannelPolicy, refunds RefundRecordDirectory) *GuestHandler {
+type GuestLookupCaptcha interface {
+	Verify(scene string, payload captchahttp.CaptchaPayloadRequest, clientIP string) error
+}
+
+func NewGuestHandler(orders GuestOrderQuery, payments PaymentChannelPolicy, refunds RefundRecordDirectory, verifiers ...GuestLookupCaptcha) *GuestHandler {
 	if orders == nil {
 		panic("order guest handler: orders is nil")
 	}
-	return &GuestHandler{orders: orders, payments: payments, refunds: refunds}
+	h := &GuestHandler{orders: orders, payments: payments, refunds: refunds}
+	if len(verifiers) > 0 {
+		h.captcha = verifiers[0]
+	}
+	return h
 }
 
 // ListGuestOrders 获取游客订单列表
@@ -65,33 +78,49 @@ func (h *GuestHandler) ListGuestOrders(c *gin.Context) {
 		return
 	}
 
+	email = strings.ToLower(strings.TrimSpace(email))
+	if _, err := mail.ParseAddress(email); err != nil {
+		ginutil.RespondError(c, response.CodeBadRequest, "error.email_invalid", nil)
+		return
+	}
+	if h.captcha == nil {
+		ginutil.RespondError(c, response.CodeInternal, "error.captcha_config_invalid", nil)
+		return
+	}
+	payload := captchahttp.CaptchaPayloadRequest{
+		CaptchaID: c.GetHeader("X-Captcha-ID"), CaptchaCode: c.GetHeader("X-Captcha-Code"), TurnstileToken: c.GetHeader("X-Turnstile-Token"),
+	}
+	if err := h.captcha.Verify(constants.CaptchaSceneGuestCreateOrder, payload, c.ClientIP()); err != nil {
+		code, key := response.CodeInternal, "error.captcha_verify_failed"
+		switch {
+		case errors.Is(err, captcha.ErrRequired):
+			code, key = response.CodeBadRequest, "error.captcha_required"
+		case errors.Is(err, captcha.ErrInvalid):
+			code, key = response.CodeBadRequest, "error.captcha_invalid"
+		case errors.Is(err, captcha.ErrConfigInvalid):
+			key = "error.captcha_config_invalid"
+		}
+		ginutil.RespondError(c, code, key, nil)
+		return
+	}
+	page, pageSize := ginutil.ParsePagination(c)
 	if orderNo != "" {
 		order, err := h.orders.GetOrderByGuestOrderNoForTenant(tenantFromRequest(c), orderNo, email, password)
-		if err != nil {
-			if errors.Is(err, ErrGuestOrderNotFound) {
-				pagination := response.Pagination{
-					Page:      1,
-					PageSize:  1,
-					Total:     0,
-					TotalPage: 1,
-				}
-				response.SuccessWithPage(c, []orderdomain.Order{}, pagination)
-				return
-			}
+		if err != nil && !errors.Is(err, ErrGuestOrderNotFound) {
 			ginutil.RespondError(c, response.CodeInternal, "error.order_fetch_failed", err)
 			return
 		}
-		pagination := response.Pagination{
-			Page:      1,
-			PageSize:  1,
-			Total:     1,
-			TotalPage: 1,
+		orders := []orderdomain.Order{}
+		var total int64
+		if err == nil && order != nil {
+			total = 1
+			if page == 1 {
+				orders = append(orders, *order)
+			}
 		}
-		response.SuccessWithPage(c, orderpresenter.NewOrderSummaryList([]orderdomain.Order{*order}), pagination)
+		response.SuccessWithPage(c, orderpresenter.NewOrderSummaryList(orders), response.BuildPagination(page, pageSize, total))
 		return
 	}
-
-	page, pageSize := ginutil.ParsePagination(c)
 
 	orders, total, err := h.orders.ListOrdersByGuestForTenant(tenantFromRequest(c), email, password, page, pageSize)
 	if err != nil {

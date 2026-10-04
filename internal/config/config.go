@@ -241,6 +241,9 @@ var (
 		"Cache-Control",
 		"X-Requested-With",
 		"X-CSRF-Token",
+		"X-Captcha-ID",
+		"X-Captcha-Code",
+		"X-Turnstile-Token",
 	}
 )
 

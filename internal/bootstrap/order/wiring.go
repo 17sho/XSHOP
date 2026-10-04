@@ -2,6 +2,7 @@ package orderwiring
 
 import (
 	"github.com/dujiao-next/internal/app/container"
+	captchahttp "github.com/dujiao-next/internal/modules/captcha/transport/http"
 	ordertransport "github.com/dujiao-next/internal/modules/order/transport/http"
 )
 
@@ -37,6 +38,7 @@ func New(c *container.Container) Handlers {
 			orderGuestQueryAdapter{orders: c.OrderService},
 			orderUserPaymentChannelAdapter{payments: c.PaymentService},
 			orderUserRefundRecordAdapter{records: c.OrderStore},
+			captchahttp.NewVerifier(c.CaptchaService),
 		),
 		Preview: ordertransport.NewPreviewHandler(
 			orderPreviewAdapter{orders: c.OrderService},

@@ -5,16 +5,46 @@ import { orderStatusVariant, orderStatusLabel } from '../utils/status'
 import { debounceAsync } from '../utils/debounce'
 import { amountToCents } from '../utils/money'
 import { clearGuestOrderAuth, loadGuestOrderAuth, saveGuestOrderAuth } from '../utils/guestOrderAuth'
+import { useAppStore } from '../stores/app'
+import { useFormValidation } from './useFormValidation'
+import type { CaptchaPayload } from '../api'
 
 type LookupMode = 'browser' | 'credentials'
 
 /** 游客订单查询/列表逻辑（classic + vault 共用）。 */
 export function useGuestOrders() {
   const { t } = useI18n()
+  const appStore = useAppStore()
+  const { emailRule } = useFormValidation(['email'])
+  // Reuse the guest scene: it protects creation and email/password lookup.
+  const captchaProvider = computed(() => String(appStore.config?.captcha?.provider || 'none'))
+  const captchaEnabled = computed(() => !!appStore.config?.captcha?.scenes?.guest_create_order && captchaProvider.value !== 'none')
+  const turnstileSiteKey = computed(() => String(appStore.config?.captcha?.turnstile?.site_key || ''))
+  const captchaPayload = ref<CaptchaPayload>({})
+  const turnstileToken = ref('')
+  const imageCaptchaRef = ref<{ refresh: () => Promise<void> } | null>(null)
+  const turnstileRef = ref<{ reset: () => void } | null>(null)
+  const resetCaptcha = () => {
+    captchaPayload.value = {}; turnstileToken.value = ''
+    if (captchaProvider.value === 'image') void imageCaptchaRef.value?.refresh()
+    else turnstileRef.value?.reset()
+  }
+  const handleCaptchaConfigStale = async () => { await appStore.loadConfig(true); resetCaptcha() }
+  const getCaptchaPayload = (): CaptchaPayload | undefined => !captchaEnabled.value ? undefined : captchaProvider.value === 'image' ? { ...captchaPayload.value } : { turnstile_token: turnstileToken.value }
+  const validateLookup = () => {
+    if (!email.value.trim() || !orderPassword.value.trim()) { error.value = t('guestOrders.errors.missing'); return false }
+    if (emailRule()(email.value.trim())) { error.value = t('error.email_invalid'); return false }
+    if (captchaEnabled.value && !(captchaProvider.value === 'image' ? captchaPayload.value.captcha_id && captchaPayload.value.captcha_code : captchaProvider.value === 'turnstile' && turnstileToken.value)) {
+      error.value = t('auth.common.captchaRequired'); return false
+    }
+    return true
+  }
   const activeTab = ref<LookupMode>('browser')
   const savedAuth = ref({ email: '', order_password: '' })
   const email = ref('')
   const orderPassword = ref('')
+  const orderNo = ref('')
+  let submittedOrderNo = ''
   const loading = ref(false)
   const error = ref('')
   const orders = ref<any[]>([])
@@ -48,6 +78,8 @@ export function useGuestOrders() {
     savedAuth.value = { email: '', order_password: '' }
     email.value = ''
     orderPassword.value = ''
+    orderNo.value = ''
+    submittedOrderNo = ''
     resetResults()
   }
   const applyResponse = (response: any) => {
@@ -71,6 +103,7 @@ export function useGuestOrders() {
     }
   }
   const loadCredentialOrders = async (page: number) => {
+    if (!validateLookup()) return
     const generation = ++requestGeneration
     loading.value = true
     error.value = ''
@@ -78,8 +111,10 @@ export function useGuestOrders() {
       const response = await guestOrderAPI.list({
         email: email.value,
         order_password: orderPassword.value,
+        ...(submittedOrderNo ? { order_no: submittedOrderNo } : {}),
         page,
         page_size: pagination.value.page_size,
+        ...(captchaEnabled.value ? { captcha_payload: getCaptchaPayload() } : {}),
       })
       if (generation !== requestGeneration) return
       applyResponse(response)
@@ -88,17 +123,16 @@ export function useGuestOrders() {
       orders.value = []
       error.value = err.message || t('guestOrders.errors.searchFailed')
     } finally {
-      if (generation === requestGeneration) loading.value = false
+      if (generation === requestGeneration) { loading.value = false; resetCaptcha() }
     }
   }
   const debouncedLoadOrders = debounceAsync(loadCredentialOrders, 300)
   const searchByCredentials = async () => {
     // The submitted query owns the UI immediately, not when its debounce fires.
     resetResults()
-    if (!email.value || !orderPassword.value) {
-      error.value = t('guestOrders.errors.missing')
-      return
-    }
+    if (!validateLookup()) return
+    email.value = email.value.trim().toLowerCase()
+    submittedOrderNo = orderNo.value.trim()
     persistAuth()
     await debouncedLoadOrders(1)
   }
@@ -134,13 +168,15 @@ export function useGuestOrders() {
   }
 
   onMounted(() => {
+    void appStore.loadConfig()
     loadSavedAuth()
     void loadBrowserOrders(1)
   })
   onUnmounted(invalidateRequests)
 
   return {
-    activeTab, setActiveTab, savedAuth, email, orderPassword, loading, error, orders, pagination,
+    captchaEnabled, captchaProvider, captchaPayload, turnstileToken, turnstileSiteKey, imageCaptchaRef, turnstileRef, handleCaptchaConfigStale,
+    activeTab, setActiveTab, savedAuth, email, orderPassword, orderNo, loading, error, orders, pagination,
     hasSavedAuth, clearSaved, handleSearch, loadBrowserOrders, searchByCredentials,
     emptyMessage, changePage, statusLabel, statusVariant, statusPillClass, formatMoney,
     formatDiscountMoney, hasDiscountAmount, hasDiscount, formatDate,
